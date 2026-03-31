@@ -29,3 +29,6 @@ bun-debug.log*
 .vscode/
 /dist/
 dist/
+.code_index/
+.codex/
+.claude/

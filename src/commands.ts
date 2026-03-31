@@ -30,9 +30,11 @@ import logout from './commands/logout/index.js'
 import installGitHubApp from './commands/install-github-app/index.js'
 import installSlackApp from './commands/install-slack-app/index.js'
 import breakCache from './commands/break-cache/index.js'
+import codeIndex from './commands/index/index.js'
 import mcp from './commands/mcp/index.js'
 import mobile from './commands/mobile/index.js'
 import onboarding from './commands/onboarding/index.js'
+import pin from './commands/pin/index.js'
 import pr_comments from './commands/pr_comments/index.js'
 import releaseNotes from './commands/release-notes/index.js'
 import rename from './commands/rename/index.js'
@@ -127,6 +129,7 @@ import permissions from './commands/permissions/index.js'
 import plan from './commands/plan/index.js'
 import fast from './commands/fast/index.js'
 import passes from './commands/passes/index.js'
+import unpin from './commands/unpin/index.js'
 import privacySettings from './commands/privacy-settings/index.js'
 import hooks from './commands/hooks/index.js'
 import files from './commands/files/index.js'
@@ -280,6 +283,7 @@ const COMMANDS = memoize((): Command[] => [
   heapDump,
   help,
   ide,
+  codeIndex,
   init,
   keybindings,
   installGitHubApp,
@@ -289,6 +293,7 @@ const COMMANDS = memoize((): Command[] => [
   mobile,
   model,
   outputStyle,
+  pin,
   remoteEnv,
   plugin,
   pr_comments,
@@ -328,6 +333,7 @@ const COMMANDS = memoize((): Command[] => [
   ...(voiceCommand ? [voiceCommand] : []),
   thinkback,
   thinkbackPlay,
+  unpin,
   permissions,
   plan,
   privacySettings,

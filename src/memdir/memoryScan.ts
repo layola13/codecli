@@ -9,6 +9,7 @@ import { basename, join } from 'path'
 import { parseFrontmatter } from '../utils/frontmatterParser.js'
 import { readFileInRange } from '../utils/readFileInRange.js'
 import { type MemoryType, parseMemoryType } from './memoryTypes.js'
+import { PINNED_FACTS_FILENAME } from './pinnedFactsFormat.js'
 
 export type MemoryHeader = {
   filename: string
@@ -39,7 +40,10 @@ export async function scanMemoryFiles(
   try {
     const entries = await readdir(memoryDir, { recursive: true })
     const mdFiles = entries.filter(
-      f => f.endsWith('.md') && basename(f) !== 'MEMORY.md',
+      f =>
+        f.endsWith('.md') &&
+        basename(f) !== 'MEMORY.md' &&
+        basename(f) !== PINNED_FACTS_FILENAME,
     )
 
     const headerResults = await Promise.allSettled(

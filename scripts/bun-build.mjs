@@ -4,19 +4,52 @@ import { existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 const compile = process.argv.includes("--compile");
+const forceSource = process.argv.includes("--source");
+const forcePublished = process.argv.includes("--published");
+
+if (forceSource && forcePublished) {
+  console.error("Choose either --source or --published, not both.");
+  process.exit(1);
+}
 
 const publishedEntrypoint = resolve("cli.js");
 const sourceEntrypoint = resolve("src/entrypoints/cli.tsx");
-const usePublishedBundle = existsSync(publishedEntrypoint);
+const hasPublishedBundle = existsSync(publishedEntrypoint);
+const hasSourceEntrypoint = existsSync(sourceEntrypoint);
+
+if (forcePublished && !hasPublishedBundle) {
+  console.error(`Published entrypoint not found: ${publishedEntrypoint}`);
+  process.exit(1);
+}
+
+if (forceSource && !hasSourceEntrypoint) {
+  console.error(`Source entrypoint not found: ${sourceEntrypoint}`);
+  process.exit(1);
+}
+
+if (!hasPublishedBundle && !hasSourceEntrypoint) {
+  console.error("No build entrypoint found.");
+  process.exit(1);
+}
+
+const usePublishedBundle = forcePublished
+  ? true
+  : forceSource
+    ? false
+    : hasPublishedBundle;
 const entrypoint = usePublishedBundle ? publishedEntrypoint : sourceEntrypoint;
 const outfile = resolve(
-  compile ? "dist/claudecode" : usePublishedBundle ? "dist/claudecode.js" : "cli.js"
+  compile
+    ? "dist/claudecode"
+    : usePublishedBundle || forceSource
+      ? "dist/claudecode.js"
+      : "cli.js"
 );
 
 mkdirSync(dirname(outfile), { recursive: true });
 
 const macroValues = {
-  VERSION: "2.1.88",
+  VERSION: "2.1.88+local.1",
   PACKAGE_URL: "@anthropic-ai/claude-code",
   NATIVE_PACKAGE_URL: "@anthropic-ai/claude-code",
   BUILD_TIME: "2026-03-30T22:36:48.424Z",

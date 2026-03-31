@@ -66,7 +66,7 @@ bun --version
 其中：
 
 - `package.json` 已改成 `claudecode`
-- `scripts/bun-build.mjs` 会优先使用根目录 `cli.js` 作为 Bun 编译入口
+- `scripts/bun-build.mjs` 支持 `--source` / `--published` 显式选择编译入口
 - `cli.js` 来自 `@anthropic-ai/claude-code@2.1.88` 的发布包
 
 ## 5. `cli.js` 的获取方式
@@ -107,9 +107,22 @@ cp -R package/vendor/ripgrep ../vendor/ripgrep
 bun run compile:bun
 ```
 
-等价逻辑：
+当前仓库里的构建链是两段：
+
+```bash
+bun run build:index-bundle
+bun run compile:bun
+```
+
+其中：
+
+- `build:index-bundle` 先把 `src/commands/index/cliBundleEntry.ts` 打成 `src/commands/index/cliBundle.mjs`
+- `compile:bun` 会自动先执行 `build:index-bundle`，再显式传 `--published`
+
+`compile:bun` 的等价逻辑：
 
 - 入口：`cli.js`
+- 额外挂载：`src/commands/index/cliBundle.mjs`
 - 输出：`dist/claudecode`
 - 类型：Bun standalone executable
 
@@ -131,7 +144,15 @@ bun run install:local
 
 ```bash
 mkdir -p ~/.local/bin
-install -m 755 dist/claudecode ~/.local/bin/claudecode
+cp dist/claudecode ~/.local/bin/claudecode.tmp
+chmod 755 ~/.local/bin/claudecode.tmp
+mv ~/.local/bin/claudecode.tmp ~/.local/bin/claudecode
+```
+
+如果要一条命令完成重新编译和安装，可以直接执行：
+
+```bash
+bun run rebuild:local
 ```
 
 ## 8. 验证
@@ -149,10 +170,10 @@ file ~/.local/bin/claudecode
 ~/.local/bin/claudecode --version
 ```
 
-当前实测输出：
+当前实测输出应类似：
 
 ```text
-2.1.88 (Claude Code)
+2.1.88+local.1 (Claude Code)
 ```
 
 ### 验证帮助页
@@ -169,7 +190,7 @@ file ~/.local/bin/claudecode
 ~/.local/bin/claudecode
 ```
 
-但是因为编译入口使用的是上游已发布的 `cli.js`，它内部仍然保留了上游的部分硬编码文案，所以会看到：
+当前安装脚本走的是上游发布入口 `cli.js`，产品名文案本身也沿用上游，所以会看到：
 
 - `--version` 仍显示 `Claude Code`
 - `--help` 的 Usage 可能仍显示 `claude`

@@ -1,0 +1,88 @@
+export type CodeLanguage =
+  | 'typescript'
+  | 'javascript'
+  | 'python'
+  | 'generic'
+
+export type EdgeKind = 'imports' | 'calls' | 'inherits' | 'depends_on'
+
+export type SourceLineRange = {
+  start: number
+  end: number
+}
+
+export type ParamIR = {
+  name: string
+  annotation?: string
+  defaultValue?: string
+}
+
+export type FunctionIR = {
+  kind: 'function' | 'method'
+  name: string
+  qualifiedName: string
+  params: ParamIR[]
+  returns?: string
+  decorators: string[]
+  calls: string[]
+  awaits: string[]
+  raises: string[]
+  isAsync: boolean
+  isPublic: boolean
+  exported: boolean
+  sourceLines: SourceLineRange
+}
+
+export type ClassIR = {
+  name: string
+  qualifiedName: string
+  bases: string[]
+  dependsOn: string[]
+  methods: FunctionIR[]
+  exported: boolean
+  sourceLines: SourceLineRange
+}
+
+export type ModuleIR = {
+  moduleId: string
+  sourcePath: string
+  relativePath: string
+  language: CodeLanguage
+  parseMode: string
+  imports: string[]
+  exports: string[]
+  classes: ClassIR[]
+  functions: FunctionIR[]
+  notes: string[]
+  errors: string[]
+  sourceBytes: number
+  lineCount: number
+  truncated: boolean
+}
+
+export type EdgeIR = {
+  edgeId: string
+  kind: EdgeKind
+  source: string
+  target: string
+  sourceFile: string
+  sourceSymbol?: string
+  lineStart?: number
+  lineEnd?: number
+  metadata?: Record<string, string | number | boolean>
+}
+
+export type CodeIndexManifest = {
+  rootDir: string
+  outputDir: string
+  createdAt: string
+  moduleCount: number
+  classCount: number
+  functionCount: number
+  methodCount: number
+  edgeCount: number
+  truncatedCount: number
+  languages: Record<string, number>
+  parseModes: Record<string, number>
+}
+

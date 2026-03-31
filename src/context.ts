@@ -10,6 +10,7 @@ import {
   getClaudeMds,
   getMemoryFiles,
 } from './utils/claudemd.js'
+import { getPinnedFactsContext } from './memdir/pinnedFacts.js'
 import { logForDiagnosticsNoPII } from './utils/diagLogs.js'
 import { isBareMode, isEnvTruthy } from './utils/envUtils.js'
 import { execFileNoThrow } from './utils/execFileNoThrow.js'
@@ -167,9 +168,14 @@ export const getUserContext = memoize(
       (isBareMode() && getAdditionalDirectoriesForClaudeMd().length === 0)
     // Await the async I/O (readFile/readdir directory walk) so the event
     // loop yields naturally at the first fs.readFile.
-    const claudeMd = shouldDisableClaudeMd
-      ? null
-      : getClaudeMds(filterInjectedMemoryFiles(await getMemoryFiles()))
+    const [claudeMd, pinnedFacts] = await Promise.all([
+      shouldDisableClaudeMd
+        ? Promise.resolve(null)
+        : getMemoryFiles().then(memoryFiles =>
+            getClaudeMds(filterInjectedMemoryFiles(memoryFiles)),
+          ),
+      getPinnedFactsContext(),
+    ])
     // Cache for the auto-mode classifier (yoloClassifier.ts reads this
     // instead of importing claudemd.ts directly, which would create a
     // cycle through permissions/filesystem → permissions → yoloClassifier).
@@ -182,6 +188,7 @@ export const getUserContext = memoize(
     })
 
     return {
+      ...(pinnedFacts && { pinnedFacts }),
       ...(claudeMd && { claudeMd }),
       currentDate: `Today's date is ${getLocalISODate()}.`,
     }

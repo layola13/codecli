@@ -1,6 +1,6 @@
 {
   "name": "claudecode",
-  "version": "2.1.88",
+  "version": "2.1.88+local.1",
   "description": "Use Claude, Anthropic's AI assistant, right from your terminal. Claude can understand your codebase, edit files, run terminal commands, and handle entire workflows for you.",
   "author": "Anthropic <support@anthropic.com>",
   "license": "SEE LICENSE IN README.md",
@@ -17,9 +17,13 @@
   },
   "scripts": {
     "prepare": "node -e \"if (!process.env.AUTHORIZED) { console.error('ERROR: Direct publishing is not allowed.\\nPlease see the release workflow documentation to publish this package.'); process.exit(1); }\"",
-    "build:bun": "bun scripts/bun-build.mjs",
-    "compile:bun": "bun scripts/bun-build.mjs --compile",
-    "install:local": "mkdir -p ~/.local/bin && install -m 755 dist/claudecode ~/.local/bin/claudecode"
+    "build:command-bundle": "bun build src/commands/index/cliBundleEntry.ts --target=node --format=esm --outfile src/commands/index/cliBundle.mjs",
+    "patch:cli-sidecar": "node scripts/patch-cli-sidecar.mjs",
+    "build:index-bundle": "bun run build:command-bundle",
+    "build:bun": "bun run build:command-bundle && bun run patch:cli-sidecar && bun scripts/bun-build.mjs --published",
+    "compile:bun": "bun run build:command-bundle && bun run patch:cli-sidecar && bun scripts/bun-build.mjs --compile --published",
+    "install:local": "mkdir -p ~/.local/bin && cp dist/claudecode ~/.local/bin/claudecode.tmp && chmod 755 ~/.local/bin/claudecode.tmp && mv ~/.local/bin/claudecode.tmp ~/.local/bin/claudecode",
+    "rebuild:local": "bun run compile:bun && bun run install:local"
   },
   "dependencies": {},
   "optionalDependencies": {
