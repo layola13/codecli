@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+coverage/
+*.tsbuildinfo
+
+# Temporary files used while unpacking/rebuilding release artifacts
+.tmp/
+*.tgz
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+bun-debug.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Editor / OS files
+.DS_Store
+.idea/
+.vscode/
+/dist/
+dist/
