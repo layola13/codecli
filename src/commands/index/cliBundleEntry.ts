@@ -412,6 +412,7 @@ function formatResult(args: {
     'Generated:',
     `- ${join(args.outputDir, 'index', 'summary.md')}`,
     `- ${join(args.outputDir, 'index', 'manifest.json')}`,
+    `- ${join(args.outputDir, 'index', 'references.jsonl')}`,
     `- ${join(args.outputDir, 'skeleton')}`,
     `- ${args.skillPaths.claude}`,
     `- ${args.skillPaths.codex}`,

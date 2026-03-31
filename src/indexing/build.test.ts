@@ -60,7 +60,7 @@ def top_level(value: str) -> None:
       )
       expect(serviceSkeleton).toContain('class OrderService:')
       expect(serviceSkeleton).toContain('async def helper(value: str) -> None:')
-      expect(serviceSkeleton).toContain('# calls: this.paymentService.charge, db.save')
+      expect(serviceSkeleton).not.toContain('#')
 
       const workerSkeleton = await readFile(
         join(rootDir, '.code_index', 'skeleton', 'worker.py'),
@@ -68,6 +68,13 @@ def top_level(value: str) -> None:
       )
       expect(workerSkeleton).toContain('def __init__(self, client: Client, repo: Repo) -> None:')
       expect(workerSkeleton).toContain('async def run(self, task_id: str) -> Result:')
+      expect(workerSkeleton).not.toContain('#')
+
+      const rootSkeleton = await readFile(
+        join(rootDir, '.code_index', 'skeleton', '__root__.py'),
+        'utf8',
+      )
+      expect(rootSkeleton).toBe('...\n')
 
       const manifestText = await readFile(
         join(rootDir, '.code_index', 'index', 'manifest.json'),
@@ -82,12 +89,24 @@ def top_level(value: str) -> None:
       expect(edgesText).toContain('"kind":"imports"')
       expect(edgesText).toContain('"kind":"calls"')
 
+      const referencesText = await readFile(
+        join(rootDir, '.code_index', 'index', 'references.jsonl'),
+        'utf8',
+      )
+      expect(referencesText).toContain('"kind":"calls"')
+      expect(referencesText).toContain('"target":"db.save"')
+      expect(referencesText).toContain(
+        '"refs":["service.ts:4-7::OrderService.createOrder"]',
+      )
+
       const claudeSkillText = await readFile(
         join(rootDir, '.claude', 'skills', 'code-index', 'SKILL.md'),
         'utf8',
       )
       expect(claudeSkillText).toContain('name: code-index')
       expect(claudeSkillText).toContain('`./.code_index/skeleton/`')
+      expect(claudeSkillText).toContain('`./.code_index/index/references.jsonl`')
+      expect(claudeSkillText).not.toContain('source_lines')
 
       const codexSkillText = await readFile(
         join(rootDir, '.codex', 'skills', 'code-index', 'SKILL.md'),
@@ -95,6 +114,8 @@ def top_level(value: str) -> None:
       )
       expect(codexSkillText).toContain('name: code-index')
       expect(codexSkillText).toContain('`./.code_index/index/summary.md`')
+      expect(codexSkillText).toContain('`./.code_index/index/references.jsonl`')
+      expect(codexSkillText).not.toContain('source_lines')
     } finally {
       await rm(rootDir, { recursive: true, force: true })
     }
