@@ -492,13 +492,10 @@ async function pinCall(args: string) {
 
   if (!rawFact) {
     const facts = await readPinnedFacts()
+    const skillPaths = await syncPinnedFactSkills(facts, path)
     return {
       type: 'text' as const,
-      value: formatPinnedFactsList(
-        facts,
-        path,
-        getPinnedFactSkillPaths(getProjectRoot()),
-      ),
+      value: formatPinnedFactsList(facts, path, skillPaths),
     }
   }
 

@@ -2769,9 +2769,10 @@ async function pinCall(args) {
   const path = getPinnedFactsPath();
   if (!rawFact) {
     const facts = await readPinnedFacts();
+    const skillPaths = await syncPinnedFactSkills(facts, path);
     return {
       type: "text",
-      value: formatPinnedFactsList(facts, path, getPinnedFactSkillPaths(getProjectRoot()))
+      value: formatPinnedFactsList(facts, path, skillPaths)
     };
   }
   const fact = normalizePinnedFact(rawFact);
