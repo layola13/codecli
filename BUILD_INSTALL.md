@@ -59,6 +59,7 @@ bun --version
 
 - `package.json`
 - `scripts/bun-build.mjs`
+- `scripts/patch-cli-sidecar.mjs`
 - `cli.js`
 - `vendor/audio-capture/*`
 - `vendor/ripgrep/*`
@@ -67,6 +68,7 @@ bun --version
 
 - `package.json` 已改成 `claudecode`
 - `scripts/bun-build.mjs` 支持 `--source` / `--published` 显式选择编译入口
+- `scripts/patch-cli-sidecar.mjs` 负责给发布入口 `cli.js` 打补丁
 - `cli.js` 来自 `@anthropic-ai/claude-code@2.1.88` 的发布包
 
 ## 5. `cli.js` 的获取方式
@@ -121,10 +123,22 @@ bun run compile:bun
 
 `compile:bun` 的等价逻辑：
 
+- 先生成：`src/commands/index/cliBundle.mjs`
+- 再执行：`scripts/patch-cli-sidecar.mjs`
 - 入口：`cli.js`
 - 额外挂载：`src/commands/index/cliBundle.mjs`
 - 输出：`dist/claudecode`
 - 类型：Bun standalone executable
+
+这里最容易误解的一点是：
+
+- `src/commands/index/cliBundle.mjs` 只是 sidecar bundle
+- 真正的主入口仍然是上游发布包里的 `cli.js`
+- 所以新增命令如果要进入最终二进制，通常需要先通过 `scripts/patch-cli-sidecar.mjs` 注入到 `cli.js`
+
+详细说明见：
+
+- `docs/cli.js-patch机制说明.md`
 
 编译成功后可看到：
 
@@ -222,53 +236,34 @@ rm -f dist/claudecode
 
 ## 12. 修改版本号
 
-版本号在 **三个地方** 同时存在，必须全部同步修改，否则编译后 `--version` 显示的仍是旧版本。
+现在版本号已经改成 **单一来源**：
 
-### 版本号位置
+- 唯一手工修改位置：`package.json`
 
-| 文件 | 说明 | 示例 |
-|---|---|---|
-| `package.json` | npm 包声明 | `"version": "2.1.88+local.2"` |
-| `scripts/bun-build.mjs` | Bun 编译宏（源码入口时使用） | `VERSION: "2.1.88+local.2"` |
-| `cli.js` | 发布入口，版本号**硬编码在 60+ 处** | `VERSION:"2.1.88+local.2"` |
+构建时会自动同步到两条路径：
 
-### 关键发现
-
-`scripts/bun-build.mjs` 中定义了 `macroValues.VERSION`，但它只在 `--source` 模式下做宏替换。当使用 `--published` 模式时，编译入口是 `cli.js`，宏替换 **不会作用于 `cli.js` 已有的内容**。
-
-因此：
-
-- `scripts/bun-build.mjs` 的宏定义只影响 `src/entrypoints/cli.tsx` 编译路径
-- `cli.js` 是从 npm 发布包恢复的，里面的版本号是写死的
-- 如果只改了 `scripts/bun-build.mjs` 而没改 `cli.js`，编译产物里的版本号仍然是旧的
+- `scripts/bun-build.mjs` 会读取 `package.json.version`
+- `scripts/patch-cli-sidecar.mjs` 会把 `cli.js` 中的发布版本块同步成 `package.json.version`
 
 ### 修改步骤
 
 ```bash
-# 1. 修改 package.json
-sed -i 's/"version": "2.1.88+local.1"/"version": "2.1.88+local.2"/' package.json
+# 1. 只修改 package.json
+sed -i 's/"version": "2.1.88+local.2"/"version": "2.1.88+local.3"/' package.json
 
-# 2. 修改 scripts/bun-build.mjs
-sed -i 's/VERSION: "2.1.88+local.1"/VERSION: "2.1.88+local.2"/' scripts/bun-build.mjs
-
-# 3. 修改 cli.js（全局替换，约 60 处）
-sed -i 's/VERSION:"2.1.88+local.1"/VERSION:"2.1.88+local.2"/g' cli.js
-
-# 4. 重新编译安装
+# 2. 重新编译安装
 bun run compile:bun
 bun run install:local
 
-# 5. 验证
+# 3. 验证
 ~/.local/bin/claudecode --version
 ```
 
-### 验证版本号
+### 验证版本号同步
 
 ```bash
-# 检查三个文件中的版本号是否一致
 grep '"version"' package.json
-grep 'VERSION' scripts/bun-build.mjs
-grep -c 'VERSION:"2.1.88+local.2"' cli.js
+~/.local/bin/claudecode --version
 ```
 
 ---
