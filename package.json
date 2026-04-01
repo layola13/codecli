@@ -1,6 +1,6 @@
 {
   "name": "claudecode",
-  "version": "2.1.88+local.1",
+  "version": "2.1.88+local.2",
   "description": "Use Claude, Anthropic's AI assistant, right from your terminal. Claude can understand your codebase, edit files, run terminal commands, and handle entire workflows for you.",
   "author": "Anthropic <support@anthropic.com>",
   "license": "SEE LICENSE IN README.md",

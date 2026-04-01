@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 const compile = process.argv.includes("--compile");
@@ -14,6 +14,7 @@ if (forceSource && forcePublished) {
 
 const publishedEntrypoint = resolve("cli.js");
 const sourceEntrypoint = resolve("src/entrypoints/cli.tsx");
+const packageJson = JSON.parse(readFileSync(resolve("package.json"), "utf8"));
 const hasPublishedBundle = existsSync(publishedEntrypoint);
 const hasSourceEntrypoint = existsSync(sourceEntrypoint);
 
@@ -49,7 +50,7 @@ const outfile = resolve(
 mkdirSync(dirname(outfile), { recursive: true });
 
 const macroValues = {
-  VERSION: "2.1.88+local.1",
+  VERSION: packageJson.version,
   PACKAGE_URL: "@anthropic-ai/claude-code",
   NATIVE_PACKAGE_URL: "@anthropic-ai/claude-code",
   BUILD_TIME: "2026-03-30T22:36:48.424Z",

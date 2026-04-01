@@ -173,7 +173,7 @@ file ~/.local/bin/claudecode
 当前实测输出应类似：
 
 ```text
-2.1.88+local.1 (Claude Code)
+2.1.88+local.2 (Claude Code)
 ```
 
 ### 验证帮助页
@@ -220,7 +220,60 @@ rm -f ~/.local/bin/claudecode
 rm -f dist/claudecode
 ```
 
-## 12. 推荐使用方式
+## 12. 修改版本号
+
+版本号在 **三个地方** 同时存在，必须全部同步修改，否则编译后 `--version` 显示的仍是旧版本。
+
+### 版本号位置
+
+| 文件 | 说明 | 示例 |
+|---|---|---|
+| `package.json` | npm 包声明 | `"version": "2.1.88+local.2"` |
+| `scripts/bun-build.mjs` | Bun 编译宏（源码入口时使用） | `VERSION: "2.1.88+local.2"` |
+| `cli.js` | 发布入口，版本号**硬编码在 60+ 处** | `VERSION:"2.1.88+local.2"` |
+
+### 关键发现
+
+`scripts/bun-build.mjs` 中定义了 `macroValues.VERSION`，但它只在 `--source` 模式下做宏替换。当使用 `--published` 模式时，编译入口是 `cli.js`，宏替换 **不会作用于 `cli.js` 已有的内容**。
+
+因此：
+
+- `scripts/bun-build.mjs` 的宏定义只影响 `src/entrypoints/cli.tsx` 编译路径
+- `cli.js` 是从 npm 发布包恢复的，里面的版本号是写死的
+- 如果只改了 `scripts/bun-build.mjs` 而没改 `cli.js`，编译产物里的版本号仍然是旧的
+
+### 修改步骤
+
+```bash
+# 1. 修改 package.json
+sed -i 's/"version": "2.1.88+local.1"/"version": "2.1.88+local.2"/' package.json
+
+# 2. 修改 scripts/bun-build.mjs
+sed -i 's/VERSION: "2.1.88+local.1"/VERSION: "2.1.88+local.2"/' scripts/bun-build.mjs
+
+# 3. 修改 cli.js（全局替换，约 60 处）
+sed -i 's/VERSION:"2.1.88+local.1"/VERSION:"2.1.88+local.2"/g' cli.js
+
+# 4. 重新编译安装
+bun run compile:bun
+bun run install:local
+
+# 5. 验证
+~/.local/bin/claudecode --version
+```
+
+### 验证版本号
+
+```bash
+# 检查三个文件中的版本号是否一致
+grep '"version"' package.json
+grep 'VERSION' scripts/bun-build.mjs
+grep -c 'VERSION:"2.1.88+local.2"' cli.js
+```
+
+---
+
+## 13. 推荐使用方式
 
 如果 `~/.local/bin` 已在 `PATH` 中，直接执行：
 
