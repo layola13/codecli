@@ -134,65 +134,6 @@ export function buildManifest(args: {
   }
 }
 
-function formatReferenceSource(edge: EdgeIR): string {
-  const location =
-    edge.lineStart !== undefined && edge.lineEnd !== undefined
-      ? `${edge.sourceFile}:${edge.lineStart}-${edge.lineEnd}`
-      : edge.sourceFile
-  let symbol = edge.sourceSymbol ?? edge.source
-  const modulePrefix = `${edge.sourceFile}::`
-  if (symbol.startsWith(modulePrefix)) {
-    symbol = symbol.slice(modulePrefix.length)
-  }
-  if (!symbol || symbol === edge.sourceFile) {
-    return location
-  }
-  return `${location}::${symbol}`
-}
-
-function buildReferences(edges: readonly EdgeIR[]): string[] {
-  const grouped = new Map<
-    string,
-    {
-      kind: EdgeIR['kind']
-      target: string
-      refs: string[]
-    }
-  >()
-
-  for (const edge of edges) {
-    const key = `${edge.kind}\u0000${edge.target}`
-    const existing = grouped.get(key)
-    if (existing) {
-      existing.refs.push(formatReferenceSource(edge))
-      continue
-    }
-    grouped.set(key, {
-      kind: edge.kind,
-      target: edge.target,
-      refs: [formatReferenceSource(edge)],
-    })
-  }
-
-  return [...grouped.values()]
-    .sort((left, right) => {
-      if (left.kind !== right.kind) {
-        return left.kind.localeCompare(right.kind)
-      }
-      return left.target.localeCompare(right.target)
-    })
-    .map(entry =>
-      JSON.stringify({
-        kind: entry.kind,
-        target: entry.target,
-        count: entry.refs.length,
-        refs: [...new Set(entry.refs)].sort((left, right) =>
-          left.localeCompare(right),
-        ),
-      }),
-    )
-}
-
 function renderSummary(args: {
   edges: readonly EdgeIR[]
   manifest: CodeIndexManifest
@@ -340,13 +281,6 @@ export async function writeIndexFiles(args: {
   await writeFile(
     join(indexDir, 'edges.jsonl'),
     args.edges.map(edge => JSON.stringify(edge)).join('\n') + '\n',
-    'utf8',
-  )
-
-  const referenceLines = buildReferences(args.edges)
-  await writeFile(
-    join(indexDir, 'references.jsonl'),
-    referenceLines.join('\n') + '\n',
     'utf8',
   )
 

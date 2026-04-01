@@ -168,6 +168,7 @@ export function parseGenericModule(
     language: context.file.language,
     parseMode: context.source.truncated ? 'generic-truncated' : 'generic-pattern',
     imports: extractImports(text),
+    importStubs: [],
     exports: [],
     classes: extractClasses({
       lineStarts,
@@ -193,4 +194,3 @@ export function parseGenericModule(
     truncated: context.source.truncated,
   }
 }
-

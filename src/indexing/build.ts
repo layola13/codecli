@@ -39,6 +39,7 @@ function buildReadErrorModule(file: {
     language: file.language,
     parseMode: 'read-error',
     imports: [],
+    importStubs: [],
     exports: [],
     classes: [],
     functions: [],

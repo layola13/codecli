@@ -50,6 +50,7 @@ export type ModuleIR = {
   language: CodeLanguage
   parseMode: string
   imports: string[]
+  importStubs: string[]
   exports: string[]
   classes: ClassIR[]
   functions: FunctionIR[]
@@ -85,4 +86,3 @@ export type CodeIndexManifest = {
   languages: Record<string, number>
   parseModes: Record<string, number>
 }
-

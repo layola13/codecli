@@ -3,10 +3,140 @@ import { dirname, join, parse } from 'path'
 import type { ClassIR, FunctionIR, ModuleIR } from './ir.js'
 import { pythonizeType, safePythonIdentifier } from './parserUtils.js'
 
+function dedupeStrings(values: readonly string[]): string[] {
+  const seen = new Set<string>()
+  const result: string[] = []
+
+  for (const value of values) {
+    const normalized = value.trim()
+    if (!normalized || seen.has(normalized)) {
+      continue
+    }
+    seen.add(normalized)
+    result.push(normalized)
+  }
+
+  return result
+}
+
 function renderParam(param: FunctionIR['params'][number]): string {
   const name = safePythonIdentifier(param.name, 'arg')
   const annotation = pythonizeType(param.annotation)
   return `${name}: ${annotation}`
+}
+
+function normalizeReferenceExpression(raw: string): string | null {
+  const superPlaceholder = '__cc_super__'
+  let value = raw.trim()
+  if (!value) {
+    return null
+  }
+
+  value = value.replace(/\?\./g, '.')
+  value = value.replace(/!/g, '')
+  value = value.replace(/\bthis\b/g, 'self')
+  value = value.replace(/\bsuper\(\)\b/g, superPlaceholder)
+  value = value.replace(/\bsuper\b/g, superPlaceholder)
+  value = value.replace(/\bsuper\(\)\./g, `${superPlaceholder}.`)
+  value = value.replace(/\bsuper\./g, `${superPlaceholder}.`)
+  value = value.replace(/\bnew\s+/g, '')
+  value = value.replace(/\$/g, '_')
+  value = value.replace(/#/g, '_')
+
+  const segments = value.split('.').filter(Boolean)
+  if (segments.length === 0) {
+    return null
+  }
+
+  const normalizedSegments: string[] = []
+  for (const segment of segments) {
+    if (segment === superPlaceholder) {
+      normalizedSegments.push('super()')
+      continue
+    }
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(segment)) {
+      return null
+    }
+    normalizedSegments.push(safePythonIdentifier(segment, 'ref'))
+  }
+
+  return normalizedSegments.join('.')
+}
+
+function renderCallExpression(target: string): string | null {
+  const expr = normalizeReferenceExpression(target)
+  if (!expr) {
+    return null
+  }
+  return `${expr}(...)`
+}
+
+function renderRaiseExpression(target: string): string | null {
+  const expr = normalizeReferenceExpression(target)
+  if (!expr) {
+    return null
+  }
+  return `${expr}(...)`
+}
+
+function renderFunctionBody(
+  fn: FunctionIR,
+  options: { indent: string; insideClass: boolean },
+): string[] {
+  const bodyIndent = `${options.indent}    `
+  const lines: string[] = []
+
+  if (options.insideClass && ['constructor', '__init__'].includes(fn.name)) {
+    for (const param of fn.params) {
+      if (['this', 'self', 'cls'].includes(param.name)) {
+        continue
+      }
+      const name = safePythonIdentifier(param.name, 'arg')
+      lines.push(`${bodyIndent}self.${name} = ${name}`)
+    }
+  }
+
+  const awaitTargets = dedupeStrings(fn.awaits)
+    .map(renderCallExpression)
+    .filter((value): value is string => Boolean(value))
+  const awaitSet = new Set(awaitTargets)
+
+  const raiseTargets = dedupeStrings(fn.raises)
+    .map(renderRaiseExpression)
+    .filter((value): value is string => Boolean(value))
+  const raiseSet = new Set(raiseTargets)
+
+  const callTargets = dedupeStrings(fn.calls)
+    .map(renderCallExpression)
+    .filter((value): value is string => Boolean(value))
+    .filter(value => !awaitSet.has(value))
+    .filter(value => !raiseSet.has(value))
+
+  for (const target of awaitTargets) {
+    lines.push(`${bodyIndent}await ${target}`)
+  }
+
+  const shouldReturnLastCall =
+    pythonizeType(fn.returns) !== 'None' && callTargets.length > 0
+
+  for (const [index, target] of callTargets.entries()) {
+    const isLast = index === callTargets.length - 1
+    if (shouldReturnLastCall && isLast) {
+      lines.push(`${bodyIndent}return ${target}`)
+    } else {
+      lines.push(`${bodyIndent}${target}`)
+    }
+  }
+
+  for (const target of raiseTargets) {
+    lines.push(`${bodyIndent}raise ${target}`)
+  }
+
+  if (lines.length === 0) {
+    return [`${bodyIndent}...`]
+  }
+
+  return lines
 }
 
 function renderFunction(
@@ -33,14 +163,21 @@ function renderFunction(
   lines.push(
     `${indent}${prefix}def ${functionName}(${params.join(', ')}) -> ${returns}:`,
   )
-  lines.push(`${indent}    ...`)
+  lines.push(...renderFunctionBody(fn, options))
   return lines
 }
 
 function renderClass(cls: ClassIR): string[] {
   const lines: string[] = []
   const className = safePythonIdentifier(cls.name, 'GeneratedClass')
-  lines.push(`class ${className}:`)
+  const bases = cls.bases
+    .map(normalizeReferenceExpression)
+    .filter((value): value is string => Boolean(value))
+  lines.push(
+    bases.length > 0
+      ? `class ${className}(${bases.join(', ')}):`
+      : `class ${className}:`,
+  )
 
   if (cls.methods.length === 0) {
     lines.push('    ...')
@@ -56,7 +193,13 @@ function renderClass(cls: ClassIR): string[] {
 }
 
 function renderModuleSkeleton(module: ModuleIR): string {
-  const lines: string[] = []
+  const lines: string[] = ['from __future__ import annotations']
+
+  if (module.importStubs.length > 0) {
+    lines.push('', ...dedupeStrings(module.importStubs))
+  }
+
+  lines.push('')
 
   if (module.classes.length === 0 && module.functions.length === 0) {
     lines.push('...')

@@ -798,10 +798,107 @@ function extractRaisedTargets(bodyText) {
 }
 
 // src/indexing/emitter.ts
+function dedupeStrings2(values) {
+  const seen = new Set;
+  const result = [];
+  for (const value of values) {
+    const normalized = value.trim();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    result.push(normalized);
+  }
+  return result;
+}
 function renderParam(param) {
   const name = safePythonIdentifier(param.name, "arg");
   const annotation = pythonizeType(param.annotation);
   return `${name}: ${annotation}`;
+}
+function normalizeReferenceExpression(raw) {
+  const superPlaceholder = "__cc_super__";
+  let value = raw.trim();
+  if (!value) {
+    return null;
+  }
+  value = value.replace(/\?\./g, ".");
+  value = value.replace(/!/g, "");
+  value = value.replace(/\bthis\b/g, "self");
+  value = value.replace(/\bsuper\(\)\b/g, superPlaceholder);
+  value = value.replace(/\bsuper\b/g, superPlaceholder);
+  value = value.replace(/\bsuper\(\)\./g, `${superPlaceholder}.`);
+  value = value.replace(/\bsuper\./g, `${superPlaceholder}.`);
+  value = value.replace(/\bnew\s+/g, "");
+  value = value.replace(/\$/g, "_");
+  value = value.replace(/#/g, "_");
+  const segments = value.split(".").filter(Boolean);
+  if (segments.length === 0) {
+    return null;
+  }
+  const normalizedSegments = [];
+  for (const segment of segments) {
+    if (segment === superPlaceholder) {
+      normalizedSegments.push("super()");
+      continue;
+    }
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(segment)) {
+      return null;
+    }
+    normalizedSegments.push(safePythonIdentifier(segment, "ref"));
+  }
+  return normalizedSegments.join(".");
+}
+function renderCallExpression(target) {
+  const expr = normalizeReferenceExpression(target);
+  if (!expr) {
+    return null;
+  }
+  return `${expr}(...)`;
+}
+function renderRaiseExpression(target) {
+  const expr = normalizeReferenceExpression(target);
+  if (!expr) {
+    return null;
+  }
+  return `${expr}(...)`;
+}
+function renderFunctionBody(fn, options) {
+  const bodyIndent = `${options.indent}    `;
+  const lines = [];
+  if (options.insideClass && ["constructor", "__init__"].includes(fn.name)) {
+    for (const param of fn.params) {
+      if (["this", "self", "cls"].includes(param.name)) {
+        continue;
+      }
+      const name = safePythonIdentifier(param.name, "arg");
+      lines.push(`${bodyIndent}self.${name} = ${name}`);
+    }
+  }
+  const awaitTargets = dedupeStrings2(fn.awaits).map(renderCallExpression).filter((value) => Boolean(value));
+  const awaitSet = new Set(awaitTargets);
+  const raiseTargets = dedupeStrings2(fn.raises).map(renderRaiseExpression).filter((value) => Boolean(value));
+  const raiseSet = new Set(raiseTargets);
+  const callTargets = dedupeStrings2(fn.calls).map(renderCallExpression).filter((value) => Boolean(value)).filter((value) => !awaitSet.has(value)).filter((value) => !raiseSet.has(value));
+  for (const target of awaitTargets) {
+    lines.push(`${bodyIndent}await ${target}`);
+  }
+  const shouldReturnLastCall = pythonizeType(fn.returns) !== "None" && callTargets.length > 0;
+  for (const [index, target] of callTargets.entries()) {
+    const isLast = index === callTargets.length - 1;
+    if (shouldReturnLastCall && isLast) {
+      lines.push(`${bodyIndent}return ${target}`);
+    } else {
+      lines.push(`${bodyIndent}${target}`);
+    }
+  }
+  for (const target of raiseTargets) {
+    lines.push(`${bodyIndent}raise ${target}`);
+  }
+  if (lines.length === 0) {
+    return [`${bodyIndent}...`];
+  }
+  return lines;
 }
 function renderFunction(fn, options) {
   const indent = options.indent;
@@ -814,13 +911,14 @@ function renderFunction(fn, options) {
   const returns = functionName === "__init__" ? "None" : pythonizeType(fn.returns);
   const prefix = fn.isAsync ? "async " : "";
   lines.push(`${indent}${prefix}def ${functionName}(${params.join(", ")}) -> ${returns}:`);
-  lines.push(`${indent}    ...`);
+  lines.push(...renderFunctionBody(fn, options));
   return lines;
 }
 function renderClass(cls) {
   const lines = [];
   const className = safePythonIdentifier(cls.name, "GeneratedClass");
-  lines.push(`class ${className}:`);
+  const bases = cls.bases.map(normalizeReferenceExpression).filter((value) => Boolean(value));
+  lines.push(bases.length > 0 ? `class ${className}(${bases.join(", ")}):` : `class ${className}:`);
   if (cls.methods.length === 0) {
     lines.push("    ...");
     return lines;
@@ -833,7 +931,11 @@ function renderClass(cls) {
   return lines;
 }
 function renderModuleSkeleton(module) {
-  const lines = [];
+  const lines = ["from __future__ import annotations"];
+  if (module.importStubs.length > 0) {
+    lines.push("", ...dedupeStrings2(module.importStubs));
+  }
+  lines.push("");
   if (module.classes.length === 0 && module.functions.length === 0) {
     lines.push("...");
     return lines.join(`
@@ -981,6 +1083,7 @@ function parseGenericModule(context, extraNotes = [], extraErrors = []) {
     language: context.file.language,
     parseMode: context.source.truncated ? "generic-truncated" : "generic-pattern",
     imports: extractImports(text),
+    importStubs: [],
     exports: [],
     classes: extractClasses({
       lineStarts,
@@ -1101,6 +1204,28 @@ function extractImports2(text) {
     }
   }
   return dedupeStrings(imports);
+}
+function extractImportStubs(text) {
+  const stubs = [];
+  for (const match of text.matchAll(/^\s*import\s+([A-Za-z0-9_.,\s]+(?:\s+as\s+[A-Za-z0-9_]+)?)\s*$/gm)) {
+    const clause = match[1] ?? "";
+    for (const part of clause.split(",")) {
+      const normalized = normalizeWhitespace(part);
+      if (!normalized) {
+        continue;
+      }
+      stubs.push(`import ${normalized}`);
+    }
+  }
+  for (const match of text.matchAll(/^\s*from\s+([A-Za-z0-9_./]+)\s+import\s+([A-Za-z0-9_.*,\s]+)\s*$/gm)) {
+    const fromModule = normalizeWhitespace(match[1] ?? "");
+    const imported = normalizeWhitespace(match[2] ?? "");
+    if (!fromModule || !imported) {
+      continue;
+    }
+    stubs.push(`from ${fromModule} import ${imported}`);
+  }
+  return dedupeStrings(stubs);
 }
 function extractExports(text, classes, functions) {
   const explicitExports = [];
@@ -1268,6 +1393,7 @@ function parsePythonModule(context) {
     language: context.file.language,
     parseMode: context.source.truncated ? "python-heuristic-truncated" : "python-heuristic",
     imports: extractImports2(text),
+    importStubs: extractImportStubs(text),
     exports: extractExports(text, classes, functions),
     classes,
     functions,
@@ -1280,6 +1406,7 @@ function parsePythonModule(context) {
 }
 
 // src/indexing/parsers/typescriptLike.ts
+import { posix } from "path";
 function extractImports3(text) {
   const imports = [];
   for (const match of text.matchAll(/^\s*import[\s\S]*?\sfrom\s+['"]([^'"]+)['"]/gm)) {
@@ -1303,6 +1430,127 @@ function extractImports3(text) {
     }
   }
   return dedupeStrings(imports);
+}
+function stripModuleExtension(value) {
+  let normalized = value.trim();
+  normalized = normalized.replace(/\.(?:[cm]?[jt]sx?|py)$/i, "");
+  normalized = normalized.replace(/\/index$/i, "");
+  return normalized;
+}
+function normalizeModuleSegment(value) {
+  return safePythonIdentifier(value.replace(/^@/, "").replace(/-/g, "_"), "mod");
+}
+function toPythonModuleSpecifier(currentRelativePath, rawSpecifier) {
+  const specifier = stripModuleExtension(rawSpecifier);
+  if (!specifier) {
+    return null;
+  }
+  if (specifier.startsWith(".")) {
+    const currentDir = posix.dirname(currentRelativePath.replaceAll("\\", "/"));
+    const currentSegments = currentDir === "." ? [] : currentDir.split("/").filter(Boolean);
+    const targetPath = posix.normalize(posix.join(currentDir === "." ? "" : currentDir, specifier));
+    const targetSegments = targetPath.split("/").filter(Boolean);
+    let common = 0;
+    while (common < currentSegments.length && common < targetSegments.length && currentSegments[common] === targetSegments[common]) {
+      common++;
+    }
+    const relativeDots = ".".repeat(currentSegments.length - common + 1);
+    const remainder = targetSegments.slice(common).map(normalizeModuleSegment).join(".");
+    return remainder ? `${relativeDots}${remainder}` : relativeDots;
+  }
+  return specifier.split("/").filter(Boolean).map(normalizeModuleSegment).join(".");
+}
+function parseNamedImportList(clause) {
+  const inner = clause.trim().replace(/^\{/, "").replace(/\}$/, "");
+  return splitTopLevel(inner, ",").map((part) => normalizeWhitespace(part).replace(/^type\s+/, "")).filter(Boolean).map((part) => {
+    const aliasMatch = part.match(/^([A-Za-z_$][A-Za-z0-9_$]*)(?:\s+as\s+([A-Za-z_$][A-Za-z0-9_$]*))?$/);
+    if (!aliasMatch?.[1]) {
+      return null;
+    }
+    const imported = safePythonIdentifier(aliasMatch[1], "symbol");
+    const alias = aliasMatch[2] ? safePythonIdentifier(aliasMatch[2], imported) : null;
+    return alias && alias !== imported ? `${imported} as ${alias}` : imported;
+  }).filter((part) => Boolean(part));
+}
+function renderNamespaceImport(moduleSpecifier, alias) {
+  if (!moduleSpecifier) {
+    return null;
+  }
+  if (!moduleSpecifier.startsWith(".")) {
+    return `import ${moduleSpecifier} as ${alias}`;
+  }
+  const leadingDots = moduleSpecifier.match(/^\.+/)?.[0] ?? "";
+  const remainder = moduleSpecifier.slice(leadingDots.length);
+  if (!remainder) {
+    return null;
+  }
+  const parts = remainder.split(".").filter(Boolean);
+  const imported = parts.pop();
+  if (!imported) {
+    return null;
+  }
+  const prefix = `${leadingDots}${parts.join(".")}`.replace(/\.$/, "");
+  return parts.length > 0 ? `from ${prefix} import ${imported} as ${alias}` : `from ${leadingDots} import ${imported} as ${alias}`;
+}
+function extractImportStubs2(text, currentRelativePath) {
+  const stubs = [];
+  for (const match of text.matchAll(/^\s*import\s+([\s\S]*?)\s+from\s+['"]([^'"]+)['"]\s*;?$/gm)) {
+    const rawClause = normalizeWhitespace((match[1] ?? "").replace(/^type\s+/, ""));
+    const moduleSpecifier = toPythonModuleSpecifier(currentRelativePath, match[2] ?? "");
+    if (!rawClause || !moduleSpecifier) {
+      continue;
+    }
+    let defaultImport = null;
+    let namespaceImport = null;
+    const namedImports = [];
+    for (const part of splitTopLevel(rawClause, ",")) {
+      const normalized = normalizeWhitespace(part);
+      if (!normalized) {
+        continue;
+      }
+      if (normalized.startsWith("{")) {
+        namedImports.push(...parseNamedImportList(normalized));
+        continue;
+      }
+      const namespaceMatch = normalized.match(/^\*\s+as\s+([A-Za-z_$][A-Za-z0-9_$]*)$/);
+      if (namespaceMatch?.[1]) {
+        namespaceImport = safePythonIdentifier(namespaceMatch[1], "namespace_");
+        continue;
+      }
+      defaultImport = safePythonIdentifier(normalized.replace(/^type\s+/, ""), "imported_symbol");
+    }
+    const importedNames = [
+      ...defaultImport ? [defaultImport] : [],
+      ...namedImports
+    ];
+    if (importedNames.length > 0) {
+      stubs.push(`from ${moduleSpecifier} import ${importedNames.join(", ")}`);
+    }
+    if (namespaceImport) {
+      const namespaceLine = renderNamespaceImport(moduleSpecifier, namespaceImport);
+      if (namespaceLine) {
+        stubs.push(namespaceLine);
+      }
+    }
+  }
+  for (const match of text.matchAll(/^\s*import\s+['"]([^'"]+)['"]\s*;?$/gm)) {
+    const moduleSpecifier = toPythonModuleSpecifier(currentRelativePath, match[1] ?? "");
+    if (moduleSpecifier && !moduleSpecifier.startsWith(".")) {
+      stubs.push(`import ${moduleSpecifier}`);
+    }
+  }
+  for (const match of text.matchAll(/^\s*(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*require\(\s*['"]([^'"]+)['"]\s*\)/gm)) {
+    const alias = safePythonIdentifier(match[1] ?? "", "required_module");
+    const moduleSpecifier = toPythonModuleSpecifier(currentRelativePath, match[2] ?? "");
+    if (!moduleSpecifier) {
+      continue;
+    }
+    const namespaceLine = renderNamespaceImport(moduleSpecifier, alias);
+    if (namespaceLine) {
+      stubs.push(namespaceLine);
+    }
+  }
+  return dedupeStrings(stubs);
 }
 function extractExports2(text) {
   const exports = [];
@@ -1816,6 +2064,7 @@ function parseTypeScriptLikeModule(context) {
     language: context.file.language,
     parseMode: context.source.truncated ? "ts-heuristic-truncated" : "ts-heuristic",
     imports: extractImports3(text),
+    importStubs: extractImportStubs2(text, context.file.relativePath),
     exports: extractExports2(text),
     classes,
     functions: functions.map((name) => functionMap.get(name)).filter(Boolean),
@@ -1968,45 +2217,6 @@ function buildManifest(args) {
     parseModes
   };
 }
-function formatReferenceSource(edge) {
-  const location = edge.lineStart !== undefined && edge.lineEnd !== undefined ? `${edge.sourceFile}:${edge.lineStart}-${edge.lineEnd}` : edge.sourceFile;
-  let symbol = edge.sourceSymbol ?? edge.source;
-  const modulePrefix = `${edge.sourceFile}::`;
-  if (symbol.startsWith(modulePrefix)) {
-    symbol = symbol.slice(modulePrefix.length);
-  }
-  if (!symbol || symbol === edge.sourceFile) {
-    return location;
-  }
-  return `${location}::${symbol}`;
-}
-function buildReferences(edges) {
-  const grouped = new Map;
-  for (const edge of edges) {
-    const key = `${edge.kind}\x00${edge.target}`;
-    const existing = grouped.get(key);
-    if (existing) {
-      existing.refs.push(formatReferenceSource(edge));
-      continue;
-    }
-    grouped.set(key, {
-      kind: edge.kind,
-      target: edge.target,
-      refs: [formatReferenceSource(edge)]
-    });
-  }
-  return [...grouped.values()].sort((left, right) => {
-    if (left.kind !== right.kind) {
-      return left.kind.localeCompare(right.kind);
-    }
-    return left.target.localeCompare(right.target);
-  }).map((entry) => JSON.stringify({
-    kind: entry.kind,
-    target: entry.target,
-    count: entry.refs.length,
-    refs: [...new Set(entry.refs)].sort((left, right) => left.localeCompare(right))
-  }));
-}
 function renderSummary(args) {
   const largestModules = [...args.modules].sort((left, right) => {
     const leftCount = left.functions.length + left.classes.length + left.classes.reduce((count, cls) => count + cls.methods.length, 0);
@@ -2111,10 +2321,6 @@ async function writeIndexFiles(args) {
   await writeFile2(join2(indexDir, "edges.jsonl"), args.edges.map((edge) => JSON.stringify(edge)).join(`
 `) + `
 `, "utf8");
-  const referenceLines = buildReferences(args.edges);
-  await writeFile2(join2(indexDir, "references.jsonl"), referenceLines.join(`
-`) + `
-`, "utf8");
   await writeFile2(join2(indexDir, "summary.md"), renderSummary({
     edges: args.edges,
     manifest,
@@ -2147,7 +2353,6 @@ function renderSkillMarkdown(args) {
   const modulesPath = `${outputPath}/index/modules.jsonl`;
   const symbolsPath = `${outputPath}/index/symbols.jsonl`;
   const edgesPath = `${outputPath}/index/edges.jsonl`;
-  const referencesPath = `${outputPath}/index/references.jsonl`;
   return [
     "---",
     `name: ${args.name}`,
@@ -2158,10 +2363,9 @@ function renderSkillMarkdown(args) {
     "",
     "## Instructions",
     `- Start with \`${summaryPath}\` for the repo overview.`,
-    `- Use \`${skeletonPath}/\` as the primary low-token structure view.`,
-    `- Use \`${referencesPath}\` first when you need reverse lookups or to find who references a symbol, call target, base class, or dependency.`,
+    `- Use \`${skeletonPath}/\` as the primary structure and reference view; skeleton functions include concise stub calls instead of full method bodies.`,
     `- Use \`${modulesPath}\`, \`${symbolsPath}\`, and \`${edgesPath}\` only when you need exact module, symbol, or edge-level detail.`,
-    "- Skeleton files are structure-only; use the JSONL index files for relation and reference lookups.",
+    "- The skeleton is valid Python with lightweight call stubs, inheritance, and constructor assignments for easier grep and AST-based lookup.",
     "- If the index is stale after edits, rerun `/index`.",
     ""
   ].join(`
@@ -2213,6 +2417,7 @@ function buildReadErrorModule(file) {
     language: file.language,
     parseMode: "read-error",
     imports: [],
+    importStubs: [],
     exports: [],
     classes: [],
     functions: [],
@@ -2701,7 +2906,6 @@ function formatResult(args) {
     "Generated:",
     `- ${join5(args.outputDir, "index", "summary.md")}`,
     `- ${join5(args.outputDir, "index", "manifest.json")}`,
-    `- ${join5(args.outputDir, "index", "references.jsonl")}`,
     `- ${join5(args.outputDir, "skeleton")}`,
     `- ${args.skillPaths.claude}`,
     `- ${args.skillPaths.codex}`

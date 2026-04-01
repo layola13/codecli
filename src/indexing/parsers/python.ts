@@ -154,6 +154,36 @@ function extractImports(text: string): string[] {
   return dedupeStrings(imports)
 }
 
+function extractImportStubs(text: string): string[] {
+  const stubs: string[] = []
+
+  for (const match of text.matchAll(
+    /^\s*import\s+([A-Za-z0-9_.,\s]+(?:\s+as\s+[A-Za-z0-9_]+)?)\s*$/gm,
+  )) {
+    const clause = match[1] ?? ''
+    for (const part of clause.split(',')) {
+      const normalized = normalizeWhitespace(part)
+      if (!normalized) {
+        continue
+      }
+      stubs.push(`import ${normalized}`)
+    }
+  }
+
+  for (const match of text.matchAll(
+    /^\s*from\s+([A-Za-z0-9_./]+)\s+import\s+([A-Za-z0-9_.*,\s]+)\s*$/gm,
+  )) {
+    const fromModule = normalizeWhitespace(match[1] ?? '')
+    const imported = normalizeWhitespace(match[2] ?? '')
+    if (!fromModule || !imported) {
+      continue
+    }
+    stubs.push(`from ${fromModule} import ${imported}`)
+  }
+
+  return dedupeStrings(stubs)
+}
+
 function extractExports(
   text: string,
   classes: readonly ClassIR[],
@@ -396,6 +426,7 @@ export function parsePythonModule(context: ParseContext): ModuleIR {
       ? 'python-heuristic-truncated'
       : 'python-heuristic',
     imports: extractImports(text),
+    importStubs: extractImportStubs(text),
     exports: extractExports(text, classes, functions),
     classes,
     functions,

@@ -37,7 +37,6 @@ function renderSkillMarkdown(args: {
   const modulesPath = `${outputPath}/index/modules.jsonl`
   const symbolsPath = `${outputPath}/index/symbols.jsonl`
   const edgesPath = `${outputPath}/index/edges.jsonl`
-  const referencesPath = `${outputPath}/index/references.jsonl`
 
   return [
     '---',
@@ -49,10 +48,9 @@ function renderSkillMarkdown(args: {
     '',
     '## Instructions',
     `- Start with \`${summaryPath}\` for the repo overview.`,
-    `- Use \`${skeletonPath}/\` as the primary low-token structure view.`,
-    `- Use \`${referencesPath}\` first when you need reverse lookups or to find who references a symbol, call target, base class, or dependency.`,
+    `- Use \`${skeletonPath}/\` as the primary structure and reference view; skeleton functions include concise stub calls instead of full method bodies.`,
     `- Use \`${modulesPath}\`, \`${symbolsPath}\`, and \`${edgesPath}\` only when you need exact module, symbol, or edge-level detail.`,
-    '- Skeleton files are structure-only; use the JSONL index files for relation and reference lookups.',
+    '- The skeleton is valid Python with lightweight call stubs, inheritance, and constructor assignments for easier grep and AST-based lookup.',
     '- If the index is stale after edits, rerun `/index`.',
     '',
   ].join('\n')
