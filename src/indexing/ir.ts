@@ -31,6 +31,7 @@ export type FunctionIR = {
   isPublic: boolean
   exported: boolean
   sourceLines: SourceLineRange
+  originPath?: string
 }
 
 export type ClassIR = {
@@ -41,6 +42,7 @@ export type ClassIR = {
   methods: FunctionIR[]
   exported: boolean
   sourceLines: SourceLineRange
+  originPath?: string
 }
 
 export type ModuleIR = {

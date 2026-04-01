@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'fs/promises'
-import { join } from 'path'
+import { join, parse as parsePath } from 'path'
 import type { CodeIndexManifest, EdgeIR, FunctionIR, ModuleIR } from './ir.js'
+import { safePythonIdentifier } from './parserUtils.js'
 
 function makeEdgeId(index: number): string {
   return `edge-${index.toString().padStart(6, '0')}`
@@ -279,12 +280,6 @@ export async function writeIndexFiles(args: {
   await writeFile(join(indexDir, 'symbols.jsonl'), symbolLines.join('\n') + '\n', 'utf8')
 
   await writeFile(
-    join(indexDir, 'edges.jsonl'),
-    args.edges.map(edge => JSON.stringify(edge)).join('\n') + '\n',
-    'utf8',
-  )
-
-  await writeFile(
     join(indexDir, 'summary.md'),
     renderSummary({
       edges: args.edges,
@@ -295,5 +290,226 @@ export async function writeIndexFiles(args: {
     'utf8',
   )
 
+  await writePythonIndex(args)
+
   return manifest
+}
+
+// ── Python __index__.py generator ──────────────────────────────────────────
+
+function toSkeletonRelativePath(relativePath: string): string {
+  const parsed = parsePath(relativePath)
+  return join(parsed.dir, `${parsed.name}.py`).replaceAll('\\', '/')
+}
+
+function escapePythonString(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, ' ')
+    .replace(/\r/g, '')
+}
+
+function isMinifiedSymbol(name: string): boolean {
+  // Filter out minified/obfuscated names from bundled code
+  if (/^[$_]\d+$/.test(name)) return true        // $25, _38, $_8
+  if (/^[$_][a-zA-Z]\d*$/.test(name) && name.length <= 3) return true  // $e, _Y, $j
+  if (/^_[a-zA-Z]\d+$/.test(name) && name.length <= 4) return true  // _e8, _j5
+  if (/^\$_/.test(name)) return true              // $_8
+  if (/^_temp\d*$/.test(name)) return true        // _temp, _temp0, _temp1
+  if (/^[A-Za-z_]\d{1,2}$/.test(name)) return true  // A25, a36, ab6, A_5
+  if (/^__\d+$/.test(name)) return true           // __5
+  return false
+}
+
+function isBundledModule(module: ModuleIR): boolean {
+  // Skip bundled/compiled output files
+  return module.relativePath === 'cli.js' || module.relativePath === 'cli.ts'
+}
+
+function computeCallFrequency(
+  edges: readonly EdgeIR[],
+  modules: readonly ModuleIR[],
+): Map<string, number> {
+  const bundledFiles = new Set(
+    modules.filter(isBundledModule).map(m => m.relativePath),
+  )
+  const freq = new Map<string, number>()
+  for (const edge of edges) {
+    if (edge.kind !== 'calls') continue
+    if (bundledFiles.has(edge.sourceFile)) continue
+    const count = freq.get(edge.target) ?? 0
+    freq.set(edge.target, count + 1)
+  }
+  return freq
+}
+
+function detectEntryPoints(modules: readonly ModuleIR[]): Array<{
+  name: string
+  path: string
+  description: string
+}> {
+  const entryPoints: Array<{ name: string; path: string; description: string }> = []
+  const seen = new Set<string>()
+
+  const entryPatterns = [
+    { pattern: /^src\/main\.tsx?$/, name: 'CLI_MAIN', desc: 'Primary CLI entry point' },
+    { pattern: /^src\/entrypoints\/cli\.tsx?$/, name: 'CLI_BOOTSTRAP', desc: 'CLI bootstrap wrapper' },
+    { pattern: /^src\/entrypoints\/mcp\.tsx?$/, name: 'MCP_SERVER', desc: 'MCP server mode' },
+    { pattern: /^src\/entrypoints\/init\.tsx?$/, name: 'CLI_INIT', desc: 'CLI initialization side-effects' },
+    { pattern: /^src\/query\.tsx?$/, name: 'QUERY_ENGINE', desc: 'Core query execution engine' },
+    { pattern: /^src\/QueryEngine\.tsx?$/, name: 'QUERY_ORCHESTRATOR', desc: 'Higher-level query orchestrator' },
+    { pattern: /^src\/tools\.tsx?$/, name: 'TOOL_REGISTRY', desc: 'Tool definition registry' },
+    { pattern: /^src\/commands\.tsx?$/, name: 'COMMAND_REGISTRY', desc: 'Slash command registry' },
+    { pattern: /^src\/tasks\.tsx?$/, name: 'TASK_REGISTRY', desc: 'Task type registry' },
+    { pattern: /^src\/Task\.tsx?$/, name: 'TASK_TYPES', desc: 'Core task type system' },
+    { pattern: /^src\/Tool\.tsx?$/, name: 'TOOL_TYPES', desc: 'Tool type system and interfaces' },
+    { pattern: /^src\/state\/AppStateStore\.tsx?$/, name: 'APP_STATE', desc: 'Canonical application state definition' },
+    { pattern: /^src\/context\.tsx?$/, name: 'CONTEXT_BUILDERS', desc: 'System/user context builders' },
+    { pattern: /^src\/cost-tracker\.tsx?$/, name: 'COST_TRACKER', desc: 'Cost/token tracking' },
+    { pattern: /^src\/setup\.tsx?$/, name: 'SESSION_SETUP', desc: 'Session setup and worktree creation' },
+  ]
+
+  for (const module of modules) {
+    for (const ep of entryPatterns) {
+      if (ep.pattern.test(module.relativePath) && !seen.has(ep.name)) {
+        seen.add(ep.name)
+        entryPoints.push({
+          name: ep.name,
+          path: `skeleton/${toSkeletonRelativePath(module.relativePath)}`,
+          description: ep.desc,
+        })
+      }
+    }
+  }
+
+  return entryPoints
+}
+
+async function writePythonIndex(args: {
+  edges: readonly EdgeIR[]
+  modules: readonly ModuleIR[]
+  outputDir: string
+  rootDir: string
+}): Promise<void> {
+  const { modules, edges, outputDir } = args
+  const callFreq = computeCallFrequency(edges, modules)
+  const entryPoints = detectEntryPoints(modules)
+
+  // Compute compact directory summary
+  const dirCounts = new Map<string, number>()
+  for (const module of modules) {
+    const parsed = parsePath(module.relativePath)
+    const dir = parsed.dir || '.'
+    dirCounts.set(dir, (dirCounts.get(dir) ?? 0) + 1)
+  }
+
+  // Top 30 directories by module count
+  const topDirs = [...dirCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 30)
+
+  // Top called symbols (project-specific, not language builtins)
+  const BUILTIN_FILTER = new Set([
+    'join', 'Error', 'map', 'filter', 'async', 'trim', 'test', 'String',
+    'Date', 'Set', 'includes', 'parseInt', 'resolve', 'slice', 'replace',
+    'split', 'concat', 'push', 'pop', 'shift', 'unshift', 'forEach',
+    'reduce', 'find', 'some', 'every', 'indexOf', 'match', 'exec',
+    'toString', 'valueOf', 'hasOwnProperty', 'constructor', 'prototype',
+    'apply', 'call', 'bind',
+  ])
+  const topCalled = [...callFreq.entries()]
+    .filter(([symbol]) => !isMinifiedSymbol(symbol))
+    .filter(([symbol]) => !BUILTIN_FILTER.has(symbol))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 30)
+
+  const lines: string[] = []
+
+  // Header
+  lines.push('# __index__.py  (auto-generated navigation bus)')
+  lines.push('# ════════════════════════════════════════════════════════════════')
+  lines.push('# PROJECT LOGIC INDEX — compact navigation layer')
+  lines.push('#')
+  lines.push('# For full data see:')
+  lines.push('#   index/symbols.jsonl   — all symbols with signatures')
+  lines.push('#   index/modules.jsonl   — module metadata & classes')
+  lines.push('#   index/summary.md      — human-readable overview')
+  lines.push('# ════════════════════════════════════════════════════════════════')
+  lines.push('from __future__ import annotations')
+  lines.push('from typing import Dict, List')
+  lines.push('')
+
+  // ── 1. ENTRY_POINTS ──
+  lines.push('# ── 1. Entry Points ─────────────────────────────────────────────')
+  lines.push('# Named entry points: CLI, MCP, query engine, tool/command registries.')
+  lines.push('')
+
+  lines.push('ENTRY_POINTS: Dict[str, str] = {')
+  for (const ep of entryPoints) {
+    const escapedPath = escapePythonString(ep.path)
+    lines.push(`    '${ep.name}': '${escapedPath}',  # ${ep.description}`)
+  }
+  lines.push('}')
+  lines.push('')
+
+  // ── 2. TOP_DIRECTORIES ──
+  lines.push('# ── 2. Top Directories (by module count) ─────────────────────────')
+  lines.push('# Quick map of where the bulk of code lives.')
+  lines.push('')
+
+  lines.push('TOP_DIRECTORIES: Dict[str, int] = {')
+  for (const [dir, count] of topDirs) {
+    const escapedDir = escapePythonString(dir)
+    lines.push(`    '${escapedDir}': ${count},`)
+  }
+  lines.push('}')
+  lines.push('')
+
+  // ── 3. HIGH_PRIORITY_SYMBOLS ──
+  lines.push('# ── 3. High-Priority Symbols (by call frequency) ────────────────')
+  lines.push('# Project-specific symbols called most frequently — core building blocks.')
+  lines.push('')
+
+  lines.push('HIGH_PRIORITY_SYMBOLS: Dict[str, int] = {')
+  for (const [symbol, count] of topCalled) {
+    const escaped = escapePythonString(symbol)
+    lines.push(`    '${escaped}': ${count},`)
+  }
+  lines.push('}')
+  lines.push('')
+
+  // ── 4. Navigation helpers ──
+  lines.push('# ── 4. Navigation Helpers ────────────────────────────────────────')
+  lines.push('# Convenience functions for AI-assisted code navigation.')
+  lines.push('# All read from local state; no filesystem access needed.')
+  lines.push('')
+  lines.push('_ENTRY: Dict[str, str] = ENTRY_POINTS')
+  lines.push('_TOP_DIRS: Dict[str, int] = TOP_DIRECTORIES')
+  lines.push('_HOT: Dict[str, int] = HIGH_PRIORITY_SYMBOLS')
+  lines.push('')
+  lines.push('')
+  lines.push('def entry_point(name: str) -> str:')
+  lines.push('    """Return the skeleton path for a named entry point."""')
+  lines.push('    return _ENTRY.get(name, f"Unknown entry point: {name}")')
+  lines.push('')
+  lines.push('')
+  lines.push('def hot_symbols(n: int = 10) -> List[str]:')
+  lines.push('    """Return the top-N most-called project symbols."""')
+  lines.push('    return list(_HOT)[:n]')
+  lines.push('')
+  lines.push('')
+  lines.push('def module_count(dir_path: str) -> int:')
+  lines.push('    """Return the number of modules in a source directory."""')
+  lines.push('    return _TOP_DIRS.get(dir_path, 0)')
+  lines.push('')
+  lines.push('')
+  lines.push('def directory_overview() -> Dict[str, int]:')
+  lines.push('    """Return all top directories with their module counts."""')
+  lines.push('    return dict(_TOP_DIRS)')
+  lines.push('')
+
+  // Write the file
+  const content = lines.join('\n')
+  await writeFile(join(outputDir, '__index__.py'), content, 'utf8')
 }

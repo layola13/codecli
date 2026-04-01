@@ -145,6 +145,11 @@ function renderFunction(
 ): string[] {
   const indent = options.indent
   const lines: string[] = []
+
+  if (fn.originPath) {
+    lines.push(`${indent}# @origin ${fn.originPath}:${fn.sourceLines.start}`)
+  }
+
   const functionName =
     fn.name === 'constructor'
       ? '__init__'

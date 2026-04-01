@@ -903,6 +903,9 @@ function renderFunctionBody(fn, options) {
 function renderFunction(fn, options) {
   const indent = options.indent;
   const lines = [];
+  if (fn.originPath) {
+    lines.push(`${indent}# @origin ${fn.originPath}:${fn.sourceLines.start}`);
+  }
   const functionName = fn.name === "constructor" ? "__init__" : safePythonIdentifier(fn.name, "generated_function");
   const params = fn.params.filter((param) => !["this", "self", "cls"].includes(param.name)).map(renderParam);
   if (options.insideClass) {
@@ -1740,7 +1743,8 @@ function buildFunctionIR(args) {
     isAsync: args.isAsync,
     isPublic: args.isPublic,
     exported: args.exported,
-    sourceLines: lineRangeFromOffsets(args.lineStarts, args.startOffset, args.endOffsetExclusive)
+    sourceLines: lineRangeFromOffsets(args.lineStarts, args.startOffset, args.endOffsetExclusive),
+    originPath: args.originPath
   };
 }
 function extractClassBases(headerText) {
@@ -1798,6 +1802,7 @@ function extractClassMethods(args) {
       lineStarts: args.lineStarts,
       moduleId: args.moduleId,
       name,
+      originPath: args.originPath,
       ownerClassName: args.className,
       paramsText,
       returns: name === "constructor" ? "None" : extractReturnType(returnSegment),
@@ -1836,6 +1841,7 @@ function extractClasses2(args) {
       className: name,
       lineStarts: args.lineStarts,
       moduleId: args.moduleId,
+      originPath: args.originPath,
       sanitizedBody
     });
     const constructorMethod = methods.find((method) => method.name === "constructor");
@@ -1846,7 +1852,8 @@ function extractClasses2(args) {
       dependsOn: dedupeStrings((constructorMethod?.params ?? []).map(dependencyLabelForParam)),
       methods,
       exported: /\bexport\b/.test(match[0]),
-      sourceLines: lineRangeFromOffsets(args.lineStarts, classIndex, bodyEndIndex + 1)
+      sourceLines: lineRangeFromOffsets(args.lineStarts, classIndex, bodyEndIndex + 1),
+      originPath: args.originPath
     });
   }
   return classes;
@@ -1887,6 +1894,7 @@ function extractFunctionDeclarations(args) {
       lineStarts: args.lineStarts,
       moduleId: args.moduleId,
       name,
+      originPath: args.originPath,
       paramsText: args.text.slice(openParenIndex + 1, closeParenIndex),
       returns: extractReturnType(args.text.slice(closeParenIndex + 1, bodyStartIndex)),
       startOffset: functionIndex
@@ -1941,6 +1949,7 @@ function extractVariableFunctions(args) {
         lineStarts: args.lineStarts,
         moduleId: args.moduleId,
         name,
+        originPath: args.originPath,
         paramsText: args.text.slice(openParenIndex + 1, closeParenIndex),
         returns: extractReturnType(args.text.slice(closeParenIndex + 1, bodyStartIndex2)),
         startOffset: nameIndex
@@ -2006,6 +2015,7 @@ function extractVariableFunctions(args) {
       lineStarts: args.lineStarts,
       moduleId: args.moduleId,
       name,
+      originPath: args.originPath,
       paramsText,
       returns: returnType,
       startOffset: nameIndex
@@ -2021,6 +2031,7 @@ function parseTypeScriptLikeModule(context) {
   const classes = extractClasses2({
     lineStarts,
     moduleId,
+    originPath: context.file.relativePath,
     sanitizedText,
     text
   });
@@ -2028,12 +2039,14 @@ function parseTypeScriptLikeModule(context) {
     ...extractFunctionDeclarations({
       lineStarts,
       moduleId,
+      originPath: context.file.relativePath,
       sanitizedText,
       text
     }).map((fn) => fn.qualifiedName),
     ...extractVariableFunctions({
       lineStarts,
       moduleId,
+      originPath: context.file.relativePath,
       sanitizedText,
       text
     }).map((fn) => fn.qualifiedName)
@@ -2043,12 +2056,14 @@ function parseTypeScriptLikeModule(context) {
     ...extractFunctionDeclarations({
       lineStarts,
       moduleId,
+      originPath: context.file.relativePath,
       sanitizedText,
       text
     }),
     ...extractVariableFunctions({
       lineStarts,
       moduleId,
+      originPath: context.file.relativePath,
       sanitizedText,
       text
     })
@@ -2111,7 +2126,7 @@ async function readSourceText(filePath, maxBytes) {
 
 // src/indexing/indexWriter.ts
 import { mkdir as mkdir2, writeFile as writeFile2 } from "fs/promises";
-import { join as join2 } from "path";
+import { join as join2, parse as parsePath } from "path";
 function makeEdgeId(index) {
   return `edge-${index.toString().padStart(6, "0")}`;
 }
@@ -2318,16 +2333,214 @@ async function writeIndexFiles(args) {
   await writeFile2(join2(indexDir, "symbols.jsonl"), symbolLines.join(`
 `) + `
 `, "utf8");
-  await writeFile2(join2(indexDir, "edges.jsonl"), args.edges.map((edge) => JSON.stringify(edge)).join(`
-`) + `
-`, "utf8");
   await writeFile2(join2(indexDir, "summary.md"), renderSummary({
     edges: args.edges,
     manifest,
     modules: args.modules,
     outputDir: args.outputDir
   }), "utf8");
+  await writePythonIndex(args);
   return manifest;
+}
+function toSkeletonRelativePath(relativePath) {
+  const parsed = parsePath(relativePath);
+  return join2(parsed.dir, `${parsed.name}.py`).replaceAll("\\", "/");
+}
+function escapePythonString(value) {
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\n/g, " ").replace(/\r/g, "");
+}
+function isMinifiedSymbol(name) {
+  if (/^[$_]\d+$/.test(name))
+    return true;
+  if (/^[$_][a-zA-Z]\d*$/.test(name) && name.length <= 3)
+    return true;
+  if (/^_[a-zA-Z]\d+$/.test(name) && name.length <= 4)
+    return true;
+  if (/^\$_/.test(name))
+    return true;
+  if (/^_temp\d*$/.test(name))
+    return true;
+  if (/^[A-Za-z_]\d{1,2}$/.test(name))
+    return true;
+  if (/^__\d+$/.test(name))
+    return true;
+  return false;
+}
+function isBundledModule(module) {
+  return module.relativePath === "cli.js" || module.relativePath === "cli.ts";
+}
+function computeCallFrequency(edges, modules) {
+  const bundledFiles = new Set(modules.filter(isBundledModule).map((m) => m.relativePath));
+  const freq = new Map;
+  for (const edge of edges) {
+    if (edge.kind !== "calls")
+      continue;
+    if (bundledFiles.has(edge.sourceFile))
+      continue;
+    const count = freq.get(edge.target) ?? 0;
+    freq.set(edge.target, count + 1);
+  }
+  return freq;
+}
+function detectEntryPoints(modules) {
+  const entryPoints = [];
+  const seen = new Set;
+  const entryPatterns = [
+    { pattern: /^src\/main\.tsx?$/, name: "CLI_MAIN", desc: "Primary CLI entry point" },
+    { pattern: /^src\/entrypoints\/cli\.tsx?$/, name: "CLI_BOOTSTRAP", desc: "CLI bootstrap wrapper" },
+    { pattern: /^src\/entrypoints\/mcp\.tsx?$/, name: "MCP_SERVER", desc: "MCP server mode" },
+    { pattern: /^src\/entrypoints\/init\.tsx?$/, name: "CLI_INIT", desc: "CLI initialization side-effects" },
+    { pattern: /^src\/query\.tsx?$/, name: "QUERY_ENGINE", desc: "Core query execution engine" },
+    { pattern: /^src\/QueryEngine\.tsx?$/, name: "QUERY_ORCHESTRATOR", desc: "Higher-level query orchestrator" },
+    { pattern: /^src\/tools\.tsx?$/, name: "TOOL_REGISTRY", desc: "Tool definition registry" },
+    { pattern: /^src\/commands\.tsx?$/, name: "COMMAND_REGISTRY", desc: "Slash command registry" },
+    { pattern: /^src\/tasks\.tsx?$/, name: "TASK_REGISTRY", desc: "Task type registry" },
+    { pattern: /^src\/Task\.tsx?$/, name: "TASK_TYPES", desc: "Core task type system" },
+    { pattern: /^src\/Tool\.tsx?$/, name: "TOOL_TYPES", desc: "Tool type system and interfaces" },
+    { pattern: /^src\/state\/AppStateStore\.tsx?$/, name: "APP_STATE", desc: "Canonical application state definition" },
+    { pattern: /^src\/context\.tsx?$/, name: "CONTEXT_BUILDERS", desc: "System/user context builders" },
+    { pattern: /^src\/cost-tracker\.tsx?$/, name: "COST_TRACKER", desc: "Cost/token tracking" },
+    { pattern: /^src\/setup\.tsx?$/, name: "SESSION_SETUP", desc: "Session setup and worktree creation" }
+  ];
+  for (const module of modules) {
+    for (const ep of entryPatterns) {
+      if (ep.pattern.test(module.relativePath) && !seen.has(ep.name)) {
+        seen.add(ep.name);
+        entryPoints.push({
+          name: ep.name,
+          path: `skeleton/${toSkeletonRelativePath(module.relativePath)}`,
+          description: ep.desc
+        });
+      }
+    }
+  }
+  return entryPoints;
+}
+async function writePythonIndex(args) {
+  const { modules, edges, outputDir } = args;
+  const callFreq = computeCallFrequency(edges, modules);
+  const entryPoints = detectEntryPoints(modules);
+  const dirCounts = new Map;
+  for (const module of modules) {
+    const parsed = parsePath(module.relativePath);
+    const dir = parsed.dir || ".";
+    dirCounts.set(dir, (dirCounts.get(dir) ?? 0) + 1);
+  }
+  const topDirs = [...dirCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30);
+  const BUILTIN_FILTER = new Set([
+    "join",
+    "Error",
+    "map",
+    "filter",
+    "async",
+    "trim",
+    "test",
+    "String",
+    "Date",
+    "Set",
+    "includes",
+    "parseInt",
+    "resolve",
+    "slice",
+    "replace",
+    "split",
+    "concat",
+    "push",
+    "pop",
+    "shift",
+    "unshift",
+    "forEach",
+    "reduce",
+    "find",
+    "some",
+    "every",
+    "indexOf",
+    "match",
+    "exec",
+    "toString",
+    "valueOf",
+    "hasOwnProperty",
+    "constructor",
+    "prototype",
+    "apply",
+    "call",
+    "bind"
+  ]);
+  const topCalled = [...callFreq.entries()].filter(([symbol]) => !isMinifiedSymbol(symbol)).filter(([symbol]) => !BUILTIN_FILTER.has(symbol)).sort((a, b) => b[1] - a[1]).slice(0, 30);
+  const lines = [];
+  lines.push("# __index__.py  (auto-generated navigation bus)");
+  lines.push("# ════════════════════════════════════════════════════════════════");
+  lines.push("# PROJECT LOGIC INDEX — compact navigation layer");
+  lines.push("#");
+  lines.push("# For full data see:");
+  lines.push("#   index/symbols.jsonl   — all symbols with signatures");
+  lines.push("#   index/modules.jsonl   — module metadata & classes");
+  lines.push("#   index/summary.md      — human-readable overview");
+  lines.push("# ════════════════════════════════════════════════════════════════");
+  lines.push("from __future__ import annotations");
+  lines.push("from typing import Dict, List");
+  lines.push("");
+  lines.push("# ── 1. Entry Points ─────────────────────────────────────────────");
+  lines.push("# Named entry points: CLI, MCP, query engine, tool/command registries.");
+  lines.push("");
+  lines.push("ENTRY_POINTS: Dict[str, str] = {");
+  for (const ep of entryPoints) {
+    const escapedPath = escapePythonString(ep.path);
+    lines.push(`    '${ep.name}': '${escapedPath}',  # ${ep.description}`);
+  }
+  lines.push("}");
+  lines.push("");
+  lines.push("# ── 2. Top Directories (by module count) ─────────────────────────");
+  lines.push("# Quick map of where the bulk of code lives.");
+  lines.push("");
+  lines.push("TOP_DIRECTORIES: Dict[str, int] = {");
+  for (const [dir, count] of topDirs) {
+    const escapedDir = escapePythonString(dir);
+    lines.push(`    '${escapedDir}': ${count},`);
+  }
+  lines.push("}");
+  lines.push("");
+  lines.push("# ── 3. High-Priority Symbols (by call frequency) ────────────────");
+  lines.push("# Project-specific symbols called most frequently — core building blocks.");
+  lines.push("");
+  lines.push("HIGH_PRIORITY_SYMBOLS: Dict[str, int] = {");
+  for (const [symbol, count] of topCalled) {
+    const escaped = escapePythonString(symbol);
+    lines.push(`    '${escaped}': ${count},`);
+  }
+  lines.push("}");
+  lines.push("");
+  lines.push("# ── 4. Navigation Helpers ────────────────────────────────────────");
+  lines.push("# Convenience functions for AI-assisted code navigation.");
+  lines.push("# All read from local state; no filesystem access needed.");
+  lines.push("");
+  lines.push("_ENTRY: Dict[str, str] = ENTRY_POINTS");
+  lines.push("_TOP_DIRS: Dict[str, int] = TOP_DIRECTORIES");
+  lines.push("_HOT: Dict[str, int] = HIGH_PRIORITY_SYMBOLS");
+  lines.push("");
+  lines.push("");
+  lines.push("def entry_point(name: str) -> str:");
+  lines.push('    """Return the skeleton path for a named entry point."""');
+  lines.push('    return _ENTRY.get(name, f"Unknown entry point: {name}")');
+  lines.push("");
+  lines.push("");
+  lines.push("def hot_symbols(n: int = 10) -> List[str]:");
+  lines.push('    """Return the top-N most-called project symbols."""');
+  lines.push("    return list(_HOT)[:n]");
+  lines.push("");
+  lines.push("");
+  lines.push("def module_count(dir_path: str) -> int:");
+  lines.push('    """Return the number of modules in a source directory."""');
+  lines.push("    return _TOP_DIRS.get(dir_path, 0)");
+  lines.push("");
+  lines.push("");
+  lines.push("def directory_overview() -> Dict[str, int]:");
+  lines.push('    """Return all top directories with their module counts."""');
+  lines.push("    return dict(_TOP_DIRS)");
+  lines.push("");
+  const content = lines.join(`
+`);
+  await writeFile2(join2(outputDir, "__index__.py"), content, "utf8");
 }
 
 // src/indexing/skillWriter.ts
@@ -2350,9 +2563,9 @@ function renderSkillMarkdown(args) {
   const outputPath = formatProjectPath(args.rootDir, args.outputDir);
   const summaryPath = `${outputPath}/index/summary.md`;
   const skeletonPath = `${outputPath}/skeleton`;
+  const indexPath = `${outputPath}/__index__.py`;
   const modulesPath = `${outputPath}/index/modules.jsonl`;
   const symbolsPath = `${outputPath}/index/symbols.jsonl`;
-  const edgesPath = `${outputPath}/index/edges.jsonl`;
   return [
     "---",
     `name: ${args.name}`,
@@ -2362,9 +2575,10 @@ function renderSkillMarkdown(args) {
     "# Code Index",
     "",
     "## Instructions",
-    `- Start with \`${summaryPath}\` for the repo overview.`,
-    `- Use \`${skeletonPath}/\` as the primary structure and reference view; skeleton functions include concise stub calls instead of full method bodies.`,
-    `- Use \`${modulesPath}\`, \`${symbolsPath}\`, and \`${edgesPath}\` only when you need exact module, symbol, or edge-level detail.`,
+    `- Start with \`${indexPath}\` for entry points, top directories, and high-priority symbols.`,
+    `- Read \`${summaryPath}\` for a human-readable overview.`,
+    `- Browse \`${skeletonPath}/\` as the primary structure view; skeleton functions include concise stub calls instead of full method bodies.`,
+    `- Use \`${modulesPath}\` and \`${symbolsPath}\` only when you need exact module or symbol-level detail.`,
     "- The skeleton is valid Python with lightweight call stubs, inheritance, and constructor assignments for easier grep and AST-based lookup.",
     "- If the index is stale after edits, rerun `/index`.",
     ""
@@ -2374,7 +2588,8 @@ function renderSkillMarkdown(args) {
 async function writeCodeIndexSkills(args) {
   const paths = {
     claude: join3(args.rootDir, ".claude", "skills", "code-index", "SKILL.md"),
-    codex: join3(args.rootDir, ".codex", "skills", "code-index", "SKILL.md")
+    codex: join3(args.rootDir, ".codex", "skills", "code-index", "SKILL.md"),
+    opencode: join3(args.rootDir, ".opencode", "skills", "code-index", "SKILL.md")
   };
   await rm(join3(args.rootDir, ".claude", "code_index"), {
     recursive: true,
@@ -2390,15 +2605,27 @@ async function writeCodeIndexSkills(args) {
   await mkdir3(join3(args.rootDir, ".codex", "skills", "code-index"), {
     recursive: true
   });
+  await mkdir3(join3(args.rootDir, ".opencode", "skills", "code-index"), {
+    recursive: true
+  });
+  const claudeDescription = "Use the shared code index under .code_index to inspect repo structure, follow imports or calls, and narrow source reads before touching implementation files.";
+  const codexDescription = "Use the shared code index under .code_index to inspect repo structure, follow imports or calls, and narrow source reads before editing implementation files.";
+  const opencodeDescription = "Use the shared code index under .code_index to inspect repo structure, navigate entry points, and find implementation files.";
   await writeFile3(paths.claude, renderSkillMarkdown({
     name: "code-index",
-    description: "Use the shared code index under .code_index to inspect repo structure, follow imports or calls, and narrow source reads before touching implementation files.",
+    description: claudeDescription,
     rootDir: args.rootDir,
     outputDir: args.outputDir
   }), "utf8");
   await writeFile3(paths.codex, renderSkillMarkdown({
     name: "code-index",
-    description: "Use the shared code index under .code_index to inspect repo structure, follow imports or calls, and narrow source reads before editing implementation files.",
+    description: codexDescription,
+    rootDir: args.rootDir,
+    outputDir: args.outputDir
+  }), "utf8");
+  await writeFile3(paths.opencode, renderSkillMarkdown({
+    name: "code-index",
+    description: opencodeDescription,
     rootDir: args.rootDir,
     outputDir: args.outputDir
   }), "utf8");
@@ -2904,11 +3131,13 @@ function formatResult(args) {
     `Languages: ${languageSummary || "none"}`,
     "",
     "Generated:",
+    `- ${join5(args.outputDir, "__index__.py")}  (entry points, top dirs, hot symbols)`,
     `- ${join5(args.outputDir, "index", "summary.md")}`,
     `- ${join5(args.outputDir, "index", "manifest.json")}`,
     `- ${join5(args.outputDir, "skeleton")}`,
     `- ${args.skillPaths.claude}`,
-    `- ${args.skillPaths.codex}`
+    `- ${args.skillPaths.codex}`,
+    `- ${args.skillPaths.opencode}`
   ].join(`
 `);
 }

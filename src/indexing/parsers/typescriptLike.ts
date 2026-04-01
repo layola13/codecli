@@ -473,6 +473,7 @@ function buildFunctionIR(args: {
   lineStarts: number[]
   moduleId: string
   name: string
+  originPath: string
   ownerClassName?: string
   paramsText: string
   returns?: string
@@ -500,6 +501,7 @@ function buildFunctionIR(args: {
       args.startOffset,
       args.endOffsetExclusive,
     ),
+    originPath: args.originPath,
   }
 }
 
@@ -526,6 +528,7 @@ function extractClassMethods(args: {
   className: string
   lineStarts: number[]
   moduleId: string
+  originPath: string
   sanitizedBody: string
 }): FunctionIR[] {
   const methods: FunctionIR[] = []
@@ -596,6 +599,7 @@ function extractClassMethods(args: {
         lineStarts: args.lineStarts,
         moduleId: args.moduleId,
         name,
+        originPath: args.originPath,
         ownerClassName: args.className,
         paramsText,
         returns:
@@ -653,6 +657,7 @@ function extractClasses(args: {
       className: name,
       lineStarts: args.lineStarts,
       moduleId: args.moduleId,
+      originPath: args.originPath,
       sanitizedBody,
     })
     const constructorMethod = methods.find(method => method.name === 'constructor')
@@ -671,6 +676,7 @@ function extractClasses(args: {
         classIndex,
         bodyEndIndex + 1,
       ),
+      originPath: args.originPath,
     })
   }
 
@@ -739,6 +745,7 @@ function extractFunctionDeclarations(args: {
         lineStarts: args.lineStarts,
         moduleId: args.moduleId,
         name,
+        originPath: args.originPath,
         paramsText: args.text.slice(openParenIndex + 1, closeParenIndex),
         returns: extractReturnType(
           args.text.slice(closeParenIndex + 1, bodyStartIndex),
@@ -832,6 +839,7 @@ function extractVariableFunctions(args: {
           lineStarts: args.lineStarts,
           moduleId: args.moduleId,
           name,
+          originPath: args.originPath,
           paramsText: args.text.slice(openParenIndex + 1, closeParenIndex),
           returns: extractReturnType(
             args.text.slice(closeParenIndex + 1, bodyStartIndex),
@@ -925,6 +933,7 @@ function extractVariableFunctions(args: {
         lineStarts: args.lineStarts,
         moduleId: args.moduleId,
         name,
+        originPath: args.originPath,
         paramsText,
         returns: returnType,
         startOffset: nameIndex,
@@ -944,6 +953,7 @@ export function parseTypeScriptLikeModule(context: ParseContext): ModuleIR {
   const classes = extractClasses({
     lineStarts,
     moduleId,
+    originPath: context.file.relativePath,
     sanitizedText,
     text,
   })
@@ -952,12 +962,14 @@ export function parseTypeScriptLikeModule(context: ParseContext): ModuleIR {
       ...extractFunctionDeclarations({
         lineStarts,
         moduleId,
+        originPath: context.file.relativePath,
         sanitizedText,
         text,
       }).map(fn => fn.qualifiedName),
       ...extractVariableFunctions({
         lineStarts,
         moduleId,
+        originPath: context.file.relativePath,
         sanitizedText,
         text,
       }).map(fn => fn.qualifiedName),
@@ -969,12 +981,14 @@ export function parseTypeScriptLikeModule(context: ParseContext): ModuleIR {
     ...extractFunctionDeclarations({
       lineStarts,
       moduleId,
+      originPath: context.file.relativePath,
       sanitizedText,
       text,
     }),
     ...extractVariableFunctions({
       lineStarts,
       moduleId,
+      originPath: context.file.relativePath,
       sanitizedText,
       text,
     }),

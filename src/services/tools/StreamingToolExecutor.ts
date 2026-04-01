@@ -188,8 +188,8 @@ export class StreamingToolExecutor {
     }
     const desc = this.erroredToolDescription
     const msg = desc
-      ? `Cancelled: parallel tool call ${desc} errored`
-      : 'Cancelled: parallel tool call errored'
+      ? `Parallel tool call error: ${desc}`
+      : 'Parallel tool call errored'
     return createUserMessage({
       content: [
         {

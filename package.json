@@ -23,7 +23,10 @@
     "build:bun": "bun run build:command-bundle && bun run patch:cli-sidecar && bun scripts/bun-build.mjs --published",
     "compile:bun": "bun run build:command-bundle && bun run patch:cli-sidecar && bun scripts/bun-build.mjs --compile --published",
     "install:local": "mkdir -p ~/.local/bin && cp dist/claudecode ~/.local/bin/claudecode.tmp && chmod 755 ~/.local/bin/claudecode.tmp && mv ~/.local/bin/claudecode.tmp ~/.local/bin/claudecode",
-    "rebuild:local": "bun run compile:bun && bun run install:local"
+    "rebuild:local": "bun run compile:bun && bun run install:local",
+    "index": "bun run build:index-bundle && node src/commands/index/cliBundle.mjs",
+    "index:status": "cat .code_index/index/manifest.json 2>/dev/null || echo 'No index found. Run /index first.'",
+    "typecheck": "bunx tsc --noEmit"
   },
   "dependencies": {},
   "optionalDependencies": {

@@ -147,7 +147,7 @@ export function renderToolUseErrorMessage(result: ToolResultBlockParam['content'
         </MessageResponse>;
     }
     return <MessageResponse>
-        <Text color="error">Error editing file</Text>
+        <Text color="error">Error editing file: {errorMessage}</Text>
       </MessageResponse>;
   }
   return <FallbackToolUseErrorMessage result={result} verbose={verbose} />;

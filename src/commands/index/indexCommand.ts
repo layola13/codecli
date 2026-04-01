@@ -39,11 +39,13 @@ function formatResult(args: {
     `Languages: ${languageSummary || 'none'}`,
     '',
     'Generated:',
+    `- ${join(args.outputDir, '__index__.py')}  (entry points, top dirs, hot symbols)`,
     `- ${join(args.outputDir, 'index', 'summary.md')}`,
     `- ${join(args.outputDir, 'index', 'manifest.json')}`,
     `- ${join(args.outputDir, 'skeleton')}`,
     `- ${args.skillPaths.claude}`,
     `- ${args.skillPaths.codex}`,
+    `- ${args.skillPaths.opencode}`,
   ].join('\n')
 }
 
