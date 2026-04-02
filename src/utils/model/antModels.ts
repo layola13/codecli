@@ -29,12 +29,21 @@ export type AntModelOverrideConfig = {
   switchCallout?: AntModelSwitchCalloutConfig
 }
 
+function writeModelTrace(label: string): void {
+  if (process.env.CLAUDE_CODE_STARTUP_TRACE === '1') {
+    process.stderr.write(`[model-trace] ${label}\n`)
+  }
+}
+
 // @[MODEL LAUNCH]: Update tengu_ant_model_override with new ant-only models
 // @[MODEL LAUNCH]: Add the codename to scripts/excluded-strings.txt to prevent it from leaking to external builds.
 export function getAntModelOverrideConfig(): AntModelOverrideConfig | null {
+  writeModelTrace('enter getAntModelOverrideConfig')
   if (process.env.USER_TYPE !== 'ant') {
+    writeModelTrace('getAntModelOverrideConfig non-ant')
     return null
   }
+  writeModelTrace('getAntModelOverrideConfig reading GB cache')
   return getFeatureValue_CACHED_MAY_BE_STALE<AntModelOverrideConfig | null>(
     'tengu_ant_model_override',
     null,
@@ -51,14 +60,19 @@ export function getAntModels(): AntModel[] {
 export function resolveAntModel(
   model: string | undefined,
 ): AntModel | undefined {
+  writeModelTrace(`enter resolveAntModel:${model ?? 'undefined'}`)
   if (process.env.USER_TYPE !== 'ant') {
+    writeModelTrace('resolveAntModel non-ant')
     return undefined
   }
   if (model === undefined) {
+    writeModelTrace('resolveAntModel undefined')
     return undefined
   }
   const lower = model.toLowerCase()
-  return getAntModels().find(
+  const result = getAntModels().find(
     m => m.alias === model || lower.includes(m.model.toLowerCase()),
   )
+  writeModelTrace(`resolveAntModel result:${result ? result.model : 'none'}`)
+  return result
 }

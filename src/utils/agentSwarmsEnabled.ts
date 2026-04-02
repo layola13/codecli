@@ -1,5 +1,6 @@
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../services/analytics/growthbook.js'
 import { isEnvTruthy } from './envUtils.js'
+import { isFirstPartyAnthropicBaseUrl } from './model/providers.js'
 
 /**
  * Check if --agent-teams flag is provided via CLI.
@@ -24,6 +25,15 @@ function isAgentTeamsFlagSet(): boolean {
 export function isAgentSwarmsEnabled(): boolean {
   // Ant: always on
   if (process.env.USER_TYPE === 'ant') {
+    // Preview builds that talk to a non-Anthropic proxy should not auto-enable
+    // swarm/team features by default; these paths assume internal infra and can
+    // stall headless startup. Keep an explicit opt-in escape hatch.
+    if (!isFirstPartyAnthropicBaseUrl()) {
+      return (
+        isEnvTruthy(process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) ||
+        isAgentTeamsFlagSet()
+      )
+    }
     return true
   }
 

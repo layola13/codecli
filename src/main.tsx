@@ -118,6 +118,12 @@ import { getGhAuthStatus } from './utils/github/ghAuthStatus.js';
 import { safeParseJSON } from './utils/json.js';
 import { logError } from './utils/log.js';
 import { getModelDeprecationWarning } from './utils/model/deprecation.js';
+
+function writeStartupTrace(label: string): void {
+  if (process.env.CLAUDE_CODE_STARTUP_TRACE === '1') {
+    process.stderr.write(`[startup-trace] ${label}\n`);
+  }
+}
 import { getDefaultMainLoopModel, getUserSpecifiedModelSetting, normalizeModelStringForAPI, parseUserSpecifiedModel } from './utils/model/model.js';
 import { ensureModelStringsInitialized } from './utils/model/modelStrings.js';
 import { PERMISSION_MODES } from './utils/permissions/PermissionMode.js';
@@ -340,7 +346,7 @@ function runMigrations(): void {
     if (feature('TRANSCRIPT_CLASSIFIER')) {
       resetAutoModeOptInForDefaultOffer();
     }
-    if ("external" === 'ant') {
+    if (process.env.USER_TYPE === 'ant') {
       migrateFennecToOpus();
     }
     saveGlobalConfig(prev => prev.migrationVersion === CURRENT_MIGRATION_VERSION ? prev : {
@@ -428,7 +434,7 @@ export function startDeferredPrefetches(): void {
   }
 
   // Event loop stall detector — logs when the main thread is blocked >500ms
-  if ("external" === 'ant') {
+  if (process.env.USER_TYPE === 'ant') {
     void import('./utils/eventLoopStallDetector.js').then(m => m.startEventLoopStallDetector());
   }
 }
@@ -1137,11 +1143,11 @@ async function run(): Promise<CommanderCommand> {
     const disableSlashCommands = options.disableSlashCommands || false;
 
     // Extract tasks mode options (ant-only)
-    const tasksOption = "external" === 'ant' && (options as {
+    const tasksOption = process.env.USER_TYPE === 'ant' && (options as {
       tasks?: boolean | string;
     }).tasks;
     const taskListId = tasksOption ? typeof tasksOption === 'string' ? tasksOption : DEFAULT_TASKS_MODE_TASK_LIST_ID : undefined;
-    if ("external" === 'ant' && taskListId) {
+    if (process.env.USER_TYPE === 'ant' && taskListId) {
       process.env.CLAUDE_CODE_TASK_LIST_ID = taskListId;
     }
 
@@ -1531,7 +1537,7 @@ async function run(): Promise<CommanderCommand> {
     };
     // Store the explicit CLI flag so teammates can inherit it
     setChromeFlagOverride(chromeOpts.chrome);
-    const enableClaudeInChrome = shouldEnableClaudeInChrome(chromeOpts.chrome) && ("external" === 'ant' || isClaudeAISubscriber());
+    const enableClaudeInChrome = shouldEnableClaudeInChrome(chromeOpts.chrome) && (process.env.USER_TYPE === 'ant' || isClaudeAISubscriber());
     const autoEnableClaudeInChrome = !enableClaudeInChrome && shouldAutoEnableClaudeInChrome();
     if (enableClaudeInChrome) {
       const platform = getPlatform();
@@ -1747,6 +1753,7 @@ async function run(): Promise<CommanderCommand> {
     // This await replaces blocking existsSync/statSync calls that were already in
     // the startup path. Wall-clock time is unchanged; we just yield to the event
     // loop during the fs I/O instead of blocking it. See #19661.
+    writeStartupTrace('before initializeToolPermissionContext');
     const initResult = await initializeToolPermissionContext({
       allowedToolsCli: allowedTools,
       disallowedToolsCli: disallowedTools,
@@ -1755,6 +1762,7 @@ async function run(): Promise<CommanderCommand> {
       allowDangerouslySkipPermissions,
       addDirs: addDir
     });
+    writeStartupTrace('after initializeToolPermissionContext');
     let toolPermissionContext = initResult.toolPermissionContext;
     const {
       warnings,
@@ -1763,7 +1771,7 @@ async function run(): Promise<CommanderCommand> {
     } = initResult;
 
     // Handle overly broad shell allow rules for ant users (Bash(*), PowerShell(*))
-    if ("external" === 'ant' && overlyBroadBashPermissions.length > 0) {
+    if (process.env.USER_TYPE === 'ant' && overlyBroadBashPermissions.length > 0) {
       for (const permission of overlyBroadBashPermissions) {
         logForDebugging(`Ignoring overly broad shell permission ${permission.ruleDisplay} from ${permission.sourceDisplay}`);
       }
@@ -1778,7 +1786,9 @@ async function run(): Promise<CommanderCommand> {
       // biome-ignore lint/suspicious/noConsole:: intentional console output
       console.error(warning);
     });
+    writeStartupTrace('before assertMinVersion');
     void assertMinVersion();
+    writeStartupTrace('after assertMinVersion');
 
     // claude.ai config fetch: -p mode only (interactive uses useManageMCPConnections
     // two-phase loading). Kicked off here to overlap with setup(); awaited
@@ -1861,14 +1871,18 @@ async function run(): Promise<CommanderCommand> {
       process.exit(1);
     }
     const effectivePrompt = prompt || '';
+    writeStartupTrace('before getInputPrompt');
     let inputPrompt = await getInputPrompt(effectivePrompt, (inputFormat ?? 'text') as 'text' | 'stream-json');
+    writeStartupTrace('after getInputPrompt');
     profileCheckpoint('action_after_input_prompt');
 
     // Activate proactive mode BEFORE getTools() so SleepTool.isEnabled()
     // (which returns isProactiveActive()) passes and Sleep is included.
     // The later REPL-path maybeActivateProactive() calls are idempotent.
     maybeActivateProactive(options);
+    writeStartupTrace('before getTools');
     let tools = getTools(toolPermissionContext);
+    writeStartupTrace('after getTools');
 
     // Apply coordinator mode tool filtering for headless path
     // (mirrors useMergedTools.ts filtering for REPL/interactive path)
@@ -1905,11 +1919,13 @@ async function run(): Promise<CommanderCommand> {
 
     // IMPORTANT: setup() must be called before any other code that depends on the cwd or worktree setup
     profileCheckpoint('action_before_setup');
+    writeStartupTrace('before setup import');
     logForDebugging('[STARTUP] Running setup()...');
     const setupStart = Date.now();
     const {
       setup
     } = await import('./setup.js');
+    writeStartupTrace('after setup import');
     const messagingSocketPath = feature('UDS_INBOX') ? (options as {
       messagingSocketPath?: string;
     }).messagingSocketPath : undefined;
@@ -1927,6 +1943,7 @@ async function run(): Promise<CommanderCommand> {
       initBuiltinPlugins();
       initBundledSkills();
     }
+    writeStartupTrace('before setup() call');
     const setupPromise = setup(preSetupCwd, permissionMode, allowDangerouslySkipPermissions, worktreeEnabled, worktreeName, tmuxEnabled, sessionId ? validateUuid(sessionId) : undefined, worktreePRNumber, messagingSocketPath);
     const commandsPromise = worktreeEnabled ? null : getCommands(preSetupCwd);
     const agentDefsPromise = worktreeEnabled ? null : getAgentDefinitionsWithOverrides(preSetupCwd);
@@ -1935,6 +1952,7 @@ async function run(): Promise<CommanderCommand> {
     commandsPromise?.catch(() => {});
     agentDefsPromise?.catch(() => {});
     await setupPromise;
+    writeStartupTrace('after setup() call');
     logForDebugging(`[STARTUP] setup() completed in ${Date.now() - setupStart}ms`);
     profileCheckpoint('action_after_setup');
 
@@ -2013,7 +2031,7 @@ async function run(): Promise<CommanderCommand> {
     //  - no env override (which short-circuits _CACHED_MAY_BE_STALE before disk)
     //  - flag absent from disk (== null also catches pre-#22279 poisoned null)
     const explicitModel = options.model || process.env.ANTHROPIC_MODEL;
-    if ("external" === 'ant' && explicitModel && explicitModel !== 'default' && !hasGrowthBookEnvOverride('tengu_ant_model_override') && getGlobalConfig().cachedGrowthBookFeatures?.['tengu_ant_model_override'] == null) {
+    if (process.env.USER_TYPE === 'ant' && explicitModel && explicitModel !== 'default' && !hasGrowthBookEnvOverride('tengu_ant_model_override') && getGlobalConfig().cachedGrowthBookFeatures?.['tengu_ant_model_override'] == null) {
       await initializeGrowthBook();
     }
 
@@ -2045,6 +2063,7 @@ async function run(): Promise<CommanderCommand> {
         logError(error);
       }
     }
+    writeStartupTrace('after parse CLI agents');
 
     // Merge CLI agents with existing ones
     const allAgents = [...agentDefinitionsResult.allAgents, ...cliAgents];
@@ -2053,6 +2072,7 @@ async function run(): Promise<CommanderCommand> {
       allAgents,
       activeAgents: getActiveAgentsFromList(allAgents)
     };
+    writeStartupTrace('after merge agent definitions');
 
     // Look up main thread agent from CLI flag or settings
     const agentSetting = agentCli ?? getInitialSettings().agent;
@@ -2063,6 +2083,7 @@ async function run(): Promise<CommanderCommand> {
         logForDebugging(`Warning: agent "${agentSetting}" not found. ` + `Available agents: ${agentDefinitions.activeAgents.map(a => a.agentType).join(', ')}. ` + `Using default behavior.`);
       }
     }
+    writeStartupTrace('after resolve mainThreadAgentDefinition');
 
     // Store the main thread agent type in bootstrap state so hooks can access it
     setMainThreadAgentType(mainThreadAgentDefinition?.agentType);
@@ -2090,6 +2111,7 @@ async function run(): Promise<CommanderCommand> {
         systemPrompt = agentSystemPrompt;
       }
     }
+    writeStartupTrace('after apply agent system prompt');
 
     // initialPrompt goes first so its slash command (if any) is processed;
     // user-provided text becomes trailing context.
@@ -2112,14 +2134,25 @@ async function run(): Promise<CommanderCommand> {
       effectiveModel = parseUserSpecifiedModel(mainThreadAgentDefinition.model);
     }
     setMainLoopModelOverride(effectiveModel);
+    writeStartupTrace('after compute effectiveModel');
 
     // Compute resolved model for hooks (use user-specified model at launch)
-    setInitialMainLoopModel(getUserSpecifiedModelSetting() || null);
+    writeStartupTrace('before getUserSpecifiedModelSetting');
+    const initialUserSpecifiedModel = getUserSpecifiedModelSetting() || null;
+    writeStartupTrace('after getUserSpecifiedModelSetting');
+    setInitialMainLoopModel(initialUserSpecifiedModel);
+    writeStartupTrace('after setInitialMainLoopModel');
     const initialMainLoopModel = getInitialMainLoopModel();
+    writeStartupTrace('after getInitialMainLoopModel');
     const resolvedInitialModel = parseUserSpecifiedModel(initialMainLoopModel ?? getDefaultMainLoopModel());
+    writeStartupTrace('after resolvedInitialModel');
     let advisorModel: string | undefined;
-    if (isAdvisorEnabled()) {
-      const advisorOption = canUserConfigureAdvisor() ? (options as {
+    const advisorEnabled = isAdvisorEnabled();
+    writeStartupTrace('after isAdvisorEnabled');
+    if (advisorEnabled) {
+      const canConfigureAdvisor = canUserConfigureAdvisor();
+      writeStartupTrace('after canUserConfigureAdvisor');
+      const advisorOption = canConfigureAdvisor ? (options as {
         advisor?: string;
       }).advisor : undefined;
       if (advisorOption) {
@@ -2134,11 +2167,12 @@ async function run(): Promise<CommanderCommand> {
           process.exit(1);
         }
       }
-      advisorModel = canUserConfigureAdvisor() ? advisorOption ?? getInitialAdvisorSetting() : advisorOption;
+      advisorModel = canConfigureAdvisor ? advisorOption ?? getInitialAdvisorSetting() : advisorOption;
       if (advisorModel) {
         logForDebugging(`[AdvisorTool] Advisor model: ${advisorModel}`);
       }
     }
+    writeStartupTrace('after advisor setup');
 
     // For tmux teammates with --agent-type, append the custom agent's prompt
     if (isAgentSwarmsEnabled() && storedTeammateOpts?.agentId && storedTeammateOpts?.agentName && storedTeammateOpts?.teamName && storedTeammateOpts?.agentType) {
@@ -2159,7 +2193,7 @@ async function run(): Promise<CommanderCommand> {
         // Log agent memory loaded event for tmux teammates
         if (customAgent.memory) {
           logEvent('tengu_agent_memory_loaded', {
-            ...("external" === 'ant' && {
+            ...(process.env.USER_TYPE === 'ant' && {
               agent_type: customAgent.agentType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
             }),
             scope: customAgent.memory as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -2174,10 +2208,12 @@ async function run(): Promise<CommanderCommand> {
         logForDebugging(`[teammate] Custom agent ${storedTeammateOpts.agentType} not found in available agents`);
       }
     }
+    writeStartupTrace('after teammate prompt setup');
     maybeActivateBrief(options);
     maybeActivateConcise(options);
     maybeActivateQuiet(options);
     maybeActivateJudge(options);
+    writeStartupTrace('after maybeActivateModes');
     // defaultView: 'chat' is a persisted opt-in — check entitlement and set
     // userMsgOptIn so the tool + prompt section activate. Interactive-only:
     // defaultView is a display preference; SDK sessions have no display, and
@@ -2206,6 +2242,7 @@ async function run(): Promise<CommanderCommand> {
       const assistantAddendum = assistantModule.getAssistantSystemPromptAddendum();
       appendSystemPrompt = appendSystemPrompt ? `${appendSystemPrompt}\n\n${assistantAddendum}` : assistantAddendum;
     }
+    writeStartupTrace('after prompt addenda');
 
     // Ink root is only needed for interactive sessions — patchConsole in the
     // Ink constructor would swallow console output in headless mode.
@@ -2219,7 +2256,7 @@ async function run(): Promise<CommanderCommand> {
       getFpsMetrics = ctx.getFpsMetrics;
       stats = ctx.stats;
       // Install asciicast recorder before Ink mounts (ant-only, opt-in via CLAUDE_CODE_TERMINAL_RECORDING=1)
-      if ("external" === 'ant') {
+      if (process.env.USER_TYPE === 'ant') {
         installAsciicastRecorder();
       }
       const {
@@ -2317,7 +2354,9 @@ async function run(): Promise<CommanderCommand> {
     // where trust is implicit). This prevents plugin LSP servers from executing
     // code in untrusted directories before user consent.
     // Must be after inline plugins are set (if any) so --plugin-dir LSP servers are included.
+    writeStartupTrace('before initializeLspServerManager');
     initializeLspServerManager();
+    writeStartupTrace('after initializeLspServerManager');
 
     // Show settings validation errors after trust is established
     // MCP config errors don't block settings from loading, so exclude them
@@ -2343,6 +2382,7 @@ async function run(): Promise<CommanderCommand> {
     const bgRefreshThrottleMs = getFeatureValue_CACHED_MAY_BE_STALE('tengu_cicada_nap_ms', 0);
     const lastPrefetched = getGlobalConfig().startupPrefetchedAt ?? 0;
     const skipStartupPrefetches = isBareMode() || bgRefreshThrottleMs > 0 && Date.now() - lastPrefetched < bgRefreshThrottleMs;
+    writeStartupTrace('before startupPrefetches');
     if (!skipStartupPrefetches) {
       const lastPrefetchedInfo = lastPrefetched > 0 ? ` last ran ${Math.round((Date.now() - lastPrefetched) / 1000)}s ago` : '';
       logForDebugging(`Starting background startup prefetches${lastPrefetchedInfo}`);
@@ -2372,14 +2412,17 @@ async function run(): Promise<CommanderCommand> {
       // Resolve fast mode org status from cache (no network)
       resolveFastModeStatusFromCache();
     }
+    writeStartupTrace('after startupPrefetches');
     if (!isNonInteractiveSession) {
       void refreshExampleCommands(); // Pre-fetch example commands (runs git log, no API call)
     }
 
     // Resolve MCP configs (started early, overlaps with setup/trust dialog work)
+    writeStartupTrace('before await mcpConfigPromise');
     const {
       servers: existingMcpConfigs
     } = await mcpConfigPromise;
+    writeStartupTrace('after await mcpConfigPromise');
     logForDebugging(`[STARTUP] MCP configs resolved in ${mcpConfigResolvedMs}ms (awaited at +${Date.now() - mcpConfigStart}ms)`);
     // CLI flag (--mcp-config) should override file-based configs, matching settings precedence
     const allMcpConfigs = {
@@ -2555,7 +2598,9 @@ async function run(): Promise<CommanderCommand> {
       // skip — no-op
     } else if (isNonInteractiveSession) {
       // In headless mode, await to ensure plugin sync completes before CLI exits
+      writeStartupTrace('before initializeVersionedPlugins');
       await initializeVersionedPlugins();
+      writeStartupTrace('after initializeVersionedPlugins');
       profileCheckpoint('action_after_plugins_init');
       void cleanupOrphanedPluginVersionsInBackground().then(() => getGlobExclusionsForPluginCache());
     } else {
@@ -2593,7 +2638,9 @@ async function run(): Promise<CommanderCommand> {
 
       // Initialize telemetry after env vars are applied so OTEL endpoint env vars and
       // otelHeadersHelper (which requires trust to execute) are available.
+      writeStartupTrace('before initializeTelemetryAfterTrust');
       initializeTelemetryAfterTrust();
+      writeStartupTrace('after initializeTelemetryAfterTrust');
 
       // Kick SessionStart hooks now so the subprocess spawn overlaps with
       // MCP connect + plugin init + print.ts import below. loadInitialMessages
@@ -2610,7 +2657,9 @@ async function run(): Promise<CommanderCommand> {
       sessionStartHooksPromise?.catch(() => {});
       profileCheckpoint('before_validateForceLoginOrg');
       // Validate org restriction for non-interactive sessions
+      writeStartupTrace('before validateForceLoginOrg');
       const orgValidation = await validateForceLoginOrg();
+      writeStartupTrace('after validateForceLoginOrg');
       if (!orgValidation.valid) {
         process.stderr.write(orgValidation.message + '\n');
         process.exit(1);
@@ -2725,7 +2774,9 @@ async function run(): Promise<CommanderCommand> {
       // fetch was kicked off early (line ~2558) so only residual time blocks
       // here. --bare skips claude.ai entirely for perf-sensitive scripts.
       profileCheckpoint('before_connectMcp');
+      writeStartupTrace('before connectMcpBatch regular');
       await connectMcpBatch(regularMcpConfigs, 'regular');
+      writeStartupTrace('after connectMcpBatch regular');
       profileCheckpoint('after_connectMcp');
       // Dedup: suppress plugin MCP servers that duplicate a claude.ai
       // connector (connector wins), then connect claude.ai servers.
@@ -2805,6 +2856,7 @@ async function run(): Promise<CommanderCommand> {
       if (claudeaiTimedOut) {
         logForDebugging(`[MCP] claude.ai connectors not ready after ${CLAUDE_AI_MCP_TIMEOUT_MS}ms — proceeding; background connection continues`);
       }
+      writeStartupTrace('after claudeaiConnect');
       profileCheckpoint('after_connectMcp_claudeai');
 
       // In headless mode, start deferred prefetches immediately (no user typing delay)
@@ -2815,16 +2867,19 @@ async function run(): Promise<CommanderCommand> {
       if (!isBareMode()) {
         startDeferredPrefetches();
         void import('./utils/backgroundHousekeeping.js').then(m => m.startBackgroundHousekeeping());
-        if ("external" === 'ant') {
+        if (process.env.USER_TYPE === 'ant') {
           void import('./utils/sdkHeapDumpMonitor.js').then(m => m.startSdkMemoryMonitor());
         }
       }
       logSessionTelemetry();
       profileCheckpoint('before_print_import');
+      writeStartupTrace('before print import');
       const {
         runHeadless
       } = await import('src/cli/print.js');
+      writeStartupTrace('after print import');
       profileCheckpoint('after_print_import');
+      writeStartupTrace('before runHeadless');
       void runHeadless(inputPrompt, () => headlessStore.getState(), headlessStore.setState, commandsHeadless, tools, sdkMcpConfigs, agentDefinitions.activeAgents, {
         continue: options.continue,
         resume: options.resume,
@@ -2856,6 +2911,7 @@ async function run(): Promise<CommanderCommand> {
         setupTrigger: setupTrigger ?? undefined,
         sessionStartHooksPromise
       });
+      writeStartupTrace('after runHeadless dispatch');
       return;
     }
 
@@ -3060,7 +3116,7 @@ async function run(): Promise<CommanderCommand> {
     //   - Runtime: uploader checks github.com/anthropics/* remote + gcloud auth.
     //   - Safety: CLAUDE_CODE_DISABLE_SESSION_DATA_UPLOAD=1 bypasses (tests set this).
     // Import is dynamic + async to avoid adding startup latency.
-    const sessionUploaderPromise = "external" === 'ant' ? import('./utils/sessionDataUploader.js') : null;
+    const sessionUploaderPromise = process.env.USER_TYPE === 'ant' ? import('./utils/sessionDataUploader.js') : null;
 
     // Defer session uploader resolution to the onTurnComplete callback to avoid
     // adding a new top-level await in main.tsx (performance-critical path).
@@ -3580,7 +3636,7 @@ async function run(): Promise<CommanderCommand> {
           }
         }
       }
-      if ("external" === 'ant') {
+      if (process.env.USER_TYPE === 'ant') {
         if (options.resume && typeof options.resume === 'string' && !maybeSessionId) {
           // Check for ccshare URL (e.g. https://go/ccshare/boris-20260311-211036)
           const {
@@ -3821,7 +3877,7 @@ async function run(): Promise<CommanderCommand> {
   if (canUserConfigureAdvisor()) {
     program.addOption(new Option('--advisor <model>', 'Enable the server-side advisor tool with the specified model (alias or full ID).').hideHelp());
   }
-  if ("external" === 'ant') {
+  if (process.env.USER_TYPE === 'ant') {
     program.addOption(new Option('--delegate-permissions', '[ANT-ONLY] Alias for --permission-mode auto.').implies({
       permissionMode: 'auto'
     }));
@@ -4376,7 +4432,7 @@ async function run(): Promise<CommanderCommand> {
   });
 
   // claude up — run the project's CLAUDE.md "# claude up" setup instructions.
-  if ("external" === 'ant') {
+  if (process.env.USER_TYPE === 'ant') {
     program.command('up').description('[ANT-ONLY] Initialize or upgrade the local dev environment using the "# claude up" section of the nearest CLAUDE.md').action(async () => {
       const {
         up
@@ -4387,7 +4443,7 @@ async function run(): Promise<CommanderCommand> {
 
   // claude rollback (ant-only)
   // Rolls back to previous releases
-  if ("external" === 'ant') {
+  if (process.env.USER_TYPE === 'ant') {
     program.command('rollback [target]').description('[ANT-ONLY] Roll back to a previous release\n\nExamples:\n  claude rollback                                    Go 1 version back from current\n  claude rollback 3                                  Go 3 versions back from current\n  claude rollback 2.0.73-dev.20251217.t190658        Roll back to a specific version').option('-l, --list', 'List recent published versions with ages').option('--dry-run', 'Show what would be installed without installing').option('--safe', 'Roll back to the server-pinned safe version (set by oncall during incidents)').action(async (target?: string, options?: {
       list?: boolean;
       dryRun?: boolean;
@@ -4411,7 +4467,7 @@ async function run(): Promise<CommanderCommand> {
   });
 
   // ant-only commands
-  if ("external" === 'ant') {
+  if (process.env.USER_TYPE === 'ant') {
     const validateLogId = (value: string) => {
       const maybeSessionId = validateUuid(value);
       if (maybeSessionId) return maybeSessionId;
@@ -4445,7 +4501,7 @@ Examples:
       } = await import('./cli/handlers/ant.js');
       await exportHandler(source, outputFile);
     });
-    if ("external" === 'ant') {
+    if (process.env.USER_TYPE === 'ant') {
       const taskCmd = program.command('task').description('[ANT-ONLY] Manage task list tasks');
       taskCmd.command('create <subject>').description('Create a new task').option('-d, --description <text>', 'Task description').option('-l, --list <id>', 'Task list ID (defaults to "tasklist")').action(async (subject: string, opts: {
         description?: string;
@@ -4604,7 +4660,7 @@ async function logTenguInit({
         assistantActivationPath: assistantActivationPath as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
       }),
       autoUpdatesChannel: (getInitialSettings().autoUpdatesChannel ?? 'latest') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      ...("external" === 'ant' ? (() => {
+      ...(process.env.USER_TYPE === 'ant' ? (() => {
         const cwd = getCwd();
         const gitRoot = findGitRoot(cwd);
         const rp = gitRoot ? relative(gitRoot, cwd) || '.' : undefined;

@@ -21,6 +21,12 @@
 - 编译产物：`dist/claudecode`
 - 安装位置：`~/.local/bin/claudecode`
 
+预览版补充约定：
+
+- 预览可执行名：`claudenative`
+- 预览编译产物：`dist/claudenative`
+- 预览安装位置：`~/.local/bin/claudenative`
+
 ## 2. 当前目录说明
 
 这个目录最初不是完整的“可从 `src/` 直接重建”的源码树：
@@ -123,6 +129,12 @@ bun run compile:bun
 bun scripts/bun-build.mjs --compile --source
 ```
 
+预览版本地构建链是：
+
+```bash
+bun scripts/bun-build.mjs --compile --source --preview
+```
+
 如果你想先清空旧产物，再做一次干净重编译，执行：
 
 ```bash
@@ -136,6 +148,21 @@ bun run compile:bun
 - 输出：`dist/claudecode`
 - 类型：Bun standalone executable
 - `/index`、`/pin`、`/unpin`、`/compress`、`/compress-status` 都直接来自源码命令注册链
+
+如果要构建预览版，可直接执行：
+
+```bash
+bun run compile:bun:preview
+```
+
+其中：
+
+- 入口：`src/entrypoints/cli.tsx`
+- 输出：`dist/claudenative`
+- 类型：Bun standalone executable
+- 会同时开启 `process.env.USER_TYPE === 'ant'` 与原先 `"external" === 'ant'` 对应的 preview 分支
+- 当前实测 `--help` 已包含 `--delegate-permissions`、`task`、`log`、`export`、`rollback`、`up`
+- 不额外切换 Bun `feature()` 宏对应的内部实验能力
 
 兼容兜底的发布包路径保留为：
 
@@ -198,6 +225,12 @@ mv ~/.local/bin/claudecode.tmp ~/.local/bin/claudecode
 bun run rebuild:local
 ```
 
+预览版对应命令：
+
+```bash
+bun run rebuild:local:preview
+```
+
 ## 8. 验证
 
 ### 验证二进制存在
@@ -224,6 +257,17 @@ file ~/.local/bin/claudecode
 ```bash
 ~/.local/bin/claudecode --help
 ```
+
+### 验证预览版分层
+
+```bash
+bun run verify:preview
+bun run smoke:preview
+./dist/claudenative --help | rg 'delegate-permissions|agent-teams|rollback|task|log|export|up'
+```
+
+默认会检查 `dist/claudenative.js`，若不存在则回退到 `dist/claudenative`。
+当前预期输出为 `Tier: full-preview-candidate`。
 
 ## 9. 已知限制
 

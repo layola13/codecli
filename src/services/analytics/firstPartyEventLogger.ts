@@ -13,6 +13,7 @@ import { isEqual } from 'lodash-es'
 import { getOrCreateUserID } from '../../utils/config.js'
 import { logForDebugging } from '../../utils/debug.js'
 import { logError } from '../../utils/log.js'
+import { isFirstPartyAnthropicBaseUrl } from '../../utils/model/providers.js'
 import { getPlatform, getWslVersion } from '../../utils/platform.js'
 import { jsonStringify } from '../../utils/slowOperations.js'
 import { profileCheckpoint } from '../../utils/startupProfiler.js'
@@ -140,7 +141,7 @@ export async function shutdown1PEventLogging(): Promise<void> {
  */
 export function is1PEventLoggingEnabled(): boolean {
   // Respect standard analytics opt-outs
-  return !isAnalyticsDisabled()
+  return !isAnalyticsDisabled() && isFirstPartyAnthropicBaseUrl()
 }
 
 /**

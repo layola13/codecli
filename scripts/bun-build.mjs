@@ -3,12 +3,28 @@
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
+function getArgValue(flag) {
+  const index = process.argv.indexOf(flag);
+  if (index === -1) {
+    return undefined;
+  }
+
+  return process.argv[index + 1];
+}
+
 const compile = process.argv.includes("--compile");
 const forceSource = process.argv.includes("--source");
 const forcePublished = process.argv.includes("--published");
+const preview = process.argv.includes("--preview");
+const customOutfile = getArgValue("--out") ?? getArgValue("--outfile");
 
 if (forceSource && forcePublished) {
   console.error("Choose either --source or --published, not both.");
+  process.exit(1);
+}
+
+if (preview && forcePublished) {
+  console.error("Preview builds currently support --source only.");
   process.exit(1);
 }
 
@@ -28,6 +44,11 @@ if (forceSource && !hasSourceEntrypoint) {
   process.exit(1);
 }
 
+if (preview && !hasSourceEntrypoint) {
+  console.error(`Preview source entrypoint not found: ${sourceEntrypoint}`);
+  process.exit(1);
+}
+
 if (!hasPublishedBundle && !hasSourceEntrypoint) {
   console.error("No build entrypoint found.");
   process.exit(1);
@@ -35,19 +56,41 @@ if (!hasPublishedBundle && !hasSourceEntrypoint) {
 
 const usePublishedBundle = forcePublished
   ? true
+  : preview
+    ? false
   : forceSource
     ? false
     : hasPublishedBundle;
 const entrypoint = usePublishedBundle ? publishedEntrypoint : sourceEntrypoint;
+const productName = preview ? "claudenative" : "claudecode";
+const defaultOutfile = compile
+  ? `dist/${productName}`
+  : usePublishedBundle || forceSource || preview
+    ? `dist/${productName}.js`
+    : "cli.js";
 const outfile = resolve(
-  compile
-    ? "dist/claudecode"
-    : usePublishedBundle || forceSource
-      ? "dist/claudecode.js"
-      : "cli.js"
+  customOutfile ?? defaultOutfile
 );
 
 mkdirSync(dirname(outfile), { recursive: true });
+
+async function runOrExit(args, label) {
+  const proc = Bun.spawn(args, {
+    cwd: process.cwd(),
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit"
+  });
+
+  const exitCode = await proc.exited;
+
+  if (exitCode !== 0) {
+    if (label) {
+      console.error(`${label} failed with exit code ${exitCode}`);
+    }
+    process.exit(exitCode);
+  }
+}
 
 const macroValues = {
   VERSION: packageJson.version,
@@ -71,6 +114,17 @@ if (!usePublishedBundle) {
     "--banner",
     `const MACRO = Object.freeze(${JSON.stringify(macroValues)});`
   );
+
+  args.push(
+    "--define",
+    preview ? 'process.env.USER_TYPE="ant"' : 'process.env.USER_TYPE="external"'
+  );
+  if (preview) {
+    args.push(
+      "--define",
+      'process.env.CLAUDE_CODE_DISABLE_STARTUP_DIALOGS="1"'
+    );
+  }
 }
 
 args.push(entrypoint);
@@ -79,15 +133,4 @@ if (compile) {
   args.splice(1, 0, "--compile");
 }
 
-const proc = Bun.spawn([process.execPath, ...args], {
-  cwd: process.cwd(),
-  stdin: "inherit",
-  stdout: "inherit",
-  stderr: "inherit"
-});
-
-const exitCode = await proc.exited;
-
-if (exitCode !== 0) {
-  process.exit(exitCode);
-}
+await runOrExit([process.execPath, ...args], "Bun build");

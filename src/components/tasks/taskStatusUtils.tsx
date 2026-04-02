@@ -2,6 +2,7 @@
  * Shared utilities for displaying task status across different task types.
  */
 
+import { feature } from 'bun:bundle';
 import figures from 'figures';
 import type { TaskStatus } from 'src/Task.js';
 import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js';
@@ -96,7 +97,7 @@ export function shouldHideTasksFooter(tasks: {
   if (!showSpinnerTree) return false;
   let hasVisibleTask = false;
   for (const t of Object.values(tasks) as TaskState[]) {
-    if (!isBackgroundTask(t) || "external" === 'ant' && isPanelAgentTask(t)) {
+    if (!isBackgroundTask(t) || process.env.USER_TYPE === 'ant' && isPanelAgentTask(t)) {
       continue;
     }
     hasVisibleTask = true;

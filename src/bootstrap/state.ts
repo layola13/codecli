@@ -200,6 +200,8 @@ type State = {
   mainThreadAgentType: string | undefined
   // Remote mode (--remote flag)
   isRemoteMode: boolean
+  // Ant-only REPL bridge activity flag used by remote-control-adjacent tools.
+  replBridgeActive?: boolean
   // Direct connect server URL (for display in header)
   directConnectServerUrl: string | undefined
   // System prompt section cache state
@@ -1695,6 +1697,14 @@ export function setLastEmittedDate(date: string | null): void {
 
 export function getAdditionalDirectoriesForClaudeMd(): string[] {
   return STATE.additionalDirectoriesForClaudeMd
+}
+
+export function isReplBridgeActive(): boolean {
+  return STATE.replBridgeActive === true
+}
+
+export function setReplBridgeActive(value: boolean): void {
+  STATE.replBridgeActive = value
 }
 
 export function setAdditionalDirectoriesForClaudeMd(

@@ -28,10 +28,17 @@ import { LIGHTNING_BOLT } from '../../constants/figures.js'
 import { isModelAllowed } from './modelAllowlist.js'
 import { type ModelAlias, isModelAlias } from './aliases.js'
 import { capitalize } from '../stringUtils.js'
+import { getAntModelOverrideConfig, resolveAntModel } from './antModels.js'
 
 export type ModelShortName = string
 export type ModelName = string
 export type ModelSetting = ModelName | ModelAlias | null
+
+function writeModelTrace(label: string): void {
+  if (process.env.CLAUDE_CODE_STARTUP_TRACE === '1') {
+    process.stderr.write(`[model-trace] ${label}\n`)
+  }
+}
 
 export function getSmallFastModel(): ModelName {
   return process.env.ANTHROPIC_SMALL_FAST_MODEL || getDefaultHaikuModel()
@@ -103,37 +110,48 @@ export function getBestModel(): ModelName {
 
 // @[MODEL LAUNCH]: Update the default Opus model (3P providers may lag so keep defaults unchanged).
 export function getDefaultOpusModel(): ModelName {
+  writeModelTrace('enter getDefaultOpusModel')
   if (process.env.ANTHROPIC_DEFAULT_OPUS_MODEL) {
+    writeModelTrace('getDefaultOpusModel from env')
     return process.env.ANTHROPIC_DEFAULT_OPUS_MODEL
   }
   // 3P providers (Bedrock, Vertex, Foundry) — kept as a separate branch
   // even when values match, since 3P availability lags firstParty and
   // these will diverge again at the next model launch.
   if (getAPIProvider() !== 'firstParty') {
+    writeModelTrace('getDefaultOpusModel from 3p modelStrings')
     return getModelStrings().opus46
   }
+  writeModelTrace('getDefaultOpusModel from 1p modelStrings')
   return getModelStrings().opus46
 }
 
 // @[MODEL LAUNCH]: Update the default Sonnet model (3P providers may lag so keep defaults unchanged).
 export function getDefaultSonnetModel(): ModelName {
+  writeModelTrace('enter getDefaultSonnetModel')
   if (process.env.ANTHROPIC_DEFAULT_SONNET_MODEL) {
+    writeModelTrace('getDefaultSonnetModel from env')
     return process.env.ANTHROPIC_DEFAULT_SONNET_MODEL
   }
   // Default to Sonnet 4.5 for 3P since they may not have 4.6 yet
   if (getAPIProvider() !== 'firstParty') {
+    writeModelTrace('getDefaultSonnetModel from 3p modelStrings')
     return getModelStrings().sonnet45
   }
+  writeModelTrace('getDefaultSonnetModel from 1p modelStrings')
   return getModelStrings().sonnet46
 }
 
 // @[MODEL LAUNCH]: Update the default Haiku model (3P providers may lag so keep defaults unchanged).
 export function getDefaultHaikuModel(): ModelName {
+  writeModelTrace('enter getDefaultHaikuModel')
   if (process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL) {
+    writeModelTrace('getDefaultHaikuModel from env')
     return process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL
   }
 
   // Haiku 4.5 is available on all platforms (first-party, Foundry, Bedrock, Vertex)
+  writeModelTrace('getDefaultHaikuModel from modelStrings')
   return getModelStrings().haiku45
 }
 
@@ -176,8 +194,10 @@ export function getRuntimeMainLoopModel(params: {
  * @returns The default model setting to use
  */
 export function getDefaultMainLoopModelSetting(): ModelName | ModelAlias {
+  writeModelTrace('enter getDefaultMainLoopModelSetting')
   // Ants default to defaultModel from flag config, or Opus 1M if not configured
   if (process.env.USER_TYPE === 'ant') {
+    writeModelTrace('getDefaultMainLoopModelSetting ant path')
     return (
       getAntModelOverrideConfig()?.defaultModel ??
       getDefaultOpusModel() + '[1m]'
@@ -204,6 +224,7 @@ export function getDefaultMainLoopModelSetting(): ModelName | ModelAlias {
  * (bypassing any user-specified values).
  */
 export function getDefaultMainLoopModel(): ModelName {
+  writeModelTrace('enter getDefaultMainLoopModel')
   return parseUserSpecifiedModel(getDefaultMainLoopModelSetting())
 }
 
@@ -445,6 +466,7 @@ export function getPublicModelName(model: ModelName): string {
 export function parseUserSpecifiedModel(
   modelInput: ModelName | ModelAlias,
 ): ModelName {
+  writeModelTrace(`enter parseUserSpecifiedModel:${modelInput}`)
   const modelInputTrimmed = modelInput.trim()
   const normalizedModel = modelInputTrimmed.toLowerCase()
 
@@ -454,16 +476,22 @@ export function parseUserSpecifiedModel(
     : normalizedModel
 
   if (isModelAlias(modelString)) {
+    writeModelTrace(`parseUserSpecifiedModel alias:${modelString}`)
     switch (modelString) {
       case 'opusplan':
+        writeModelTrace('parseUserSpecifiedModel alias opusplan')
         return getDefaultSonnetModel() + (has1mTag ? '[1m]' : '') // Sonnet is default, Opus in plan mode
       case 'sonnet':
+        writeModelTrace('parseUserSpecifiedModel alias sonnet')
         return getDefaultSonnetModel() + (has1mTag ? '[1m]' : '')
       case 'haiku':
+        writeModelTrace('parseUserSpecifiedModel alias haiku')
         return getDefaultHaikuModel() + (has1mTag ? '[1m]' : '')
       case 'opus':
+        writeModelTrace('parseUserSpecifiedModel alias opus')
         return getDefaultOpusModel() + (has1mTag ? '[1m]' : '')
       case 'best':
+        writeModelTrace('parseUserSpecifiedModel alias best')
         return getBestModel()
       default:
     }
@@ -479,14 +507,17 @@ export function parseUserSpecifiedModel(
     isLegacyOpusFirstParty(modelString) &&
     isLegacyModelRemapEnabled()
   ) {
+    writeModelTrace('parseUserSpecifiedModel legacy opus remap')
     return getDefaultOpusModel() + (has1mTag ? '[1m]' : '')
   }
 
   if (process.env.USER_TYPE === 'ant') {
+    writeModelTrace(`parseUserSpecifiedModel ant path:${modelString}`)
     const has1mAntTag = has1mContext(normalizedModel)
     const baseAntModel = normalizedModel.replace(/\[1m]$/i, '').trim()
 
     const antModel = resolveAntModel(baseAntModel)
+    writeModelTrace(`parseUserSpecifiedModel ant resolved:${antModel ? antModel.model : 'none'}`)
     if (antModel) {
       const suffix = has1mAntTag ? '[1m]' : ''
       return antModel.model + suffix
@@ -500,8 +531,10 @@ export function parseUserSpecifiedModel(
   // Preserve original case for custom model names (e.g., Azure Foundry deployment IDs)
   // Only strip [1m] suffix if present, maintaining case of the base model
   if (has1mTag) {
+    writeModelTrace('parseUserSpecifiedModel return original with 1m tag')
     return modelInputTrimmed.replace(/\[1m\]$/i, '').trim() + '[1m]'
   }
+  writeModelTrace(`parseUserSpecifiedModel return original:${modelInputTrimmed}`)
   return modelInputTrimmed
 }
 

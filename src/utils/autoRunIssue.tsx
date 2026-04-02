@@ -1,4 +1,5 @@
 import { c as _c } from "react/compiler-runtime";
+import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { useEffect, useRef } from 'react';
 import { KeyboardShortcutHint } from '../components/design-system/KeyboardShortcutHint.js';
@@ -100,7 +101,7 @@ export function shouldAutoRunIssue(reason: AutoRunIssueReason): boolean {
  */
 export function getAutoRunCommand(reason: AutoRunIssueReason): string {
   // Only ant builds have the /good-claude command
-  if ("external" === 'ant' && reason === 'feedback_survey_good') {
+  if (process.env.USER_TYPE === 'ant' && reason === 'feedback_survey_good') {
     return '/good-claude';
   }
   return '/issue';

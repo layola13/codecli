@@ -22,14 +22,21 @@
     "patch:cli-sidecar": "node scripts/patch-cli-sidecar.mjs",
     "build:index-bundle": "bun run build:command-bundle",
     "build:bun": "bun scripts/bun-build.mjs --source",
+    "build:bun:preview": "bun run typecheck:preview && bun scripts/bun-build.mjs --source --preview",
     "compile:bun": "bun scripts/bun-build.mjs --compile --source",
+    "compile:bun:preview": "bun run typecheck:preview && bun scripts/bun-build.mjs --compile --source --preview",
     "build:bun:published": "bun run build:command-bundle && bun run patch:cli-sidecar && bun scripts/bun-build.mjs --published",
     "compile:bun:published": "bun run build:command-bundle && bun run patch:cli-sidecar && bun scripts/bun-build.mjs --compile --published",
     "install:local": "mkdir -p ~/.local/bin && cp dist/claudecode ~/.local/bin/claudecode.tmp && chmod 755 ~/.local/bin/claudecode.tmp && mv ~/.local/bin/claudecode.tmp ~/.local/bin/claudecode",
+    "install:local:preview": "mkdir -p ~/.local/bin && cp dist/claudenative ~/.local/bin/claudenative.tmp && chmod 755 ~/.local/bin/claudenative.tmp && mv ~/.local/bin/claudenative.tmp ~/.local/bin/claudenative",
     "rebuild:local": "bun run compile:bun && bun run install:local",
+    "rebuild:local:preview": "bun run compile:bun:preview && bun run install:local:preview",
+    "verify:preview": "bun run typecheck:preview && bun scripts/verify-preview-build.mjs",
+    "smoke:preview": "bun scripts/smoke-preview-build.mjs",
     "index": "bun run build:index-bundle && node src/commands/index/cliBundle.mjs",
     "index:status": "cat .code_index/index/manifest.json 2>/dev/null || echo 'No index found. Run /index first.'",
-    "typecheck": "bunx tsc --noEmit"
+    "typecheck": "bunx tsc --noEmit",
+    "typecheck:preview": "bunx tsc --noEmit -p tsconfig.preview-check.json"
   },
   "dependencies": {
     "@alcalzone/ansi-tokenize": "^0.1.0",

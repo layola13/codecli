@@ -1,4 +1,5 @@
 import { c as _c } from "react/compiler-runtime";
+import { feature } from 'bun:bundle';
 import React, { useEffect, useRef } from 'react';
 import { MCPSettings } from '../../components/mcp/index.js';
 import { MCPReconnect } from '../../components/mcp/MCPReconnect.js';
@@ -77,7 +78,7 @@ export async function call(onDone: LocalJSXCommandOnDone, _context: unknown, arg
   }
 
   // Redirect base /mcp command to /plugins installed tab for ant users
-  if ("external" === 'ant') {
+  if (process.env.USER_TYPE === 'ant') {
     return <PluginSettings onComplete={onDone} args="manage" showMcpRedirectMessage />;
   }
   return <MCPSettings onComplete={onDone} />;

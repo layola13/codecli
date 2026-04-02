@@ -353,6 +353,12 @@ import { errorMessage, toError } from '../utils/errors.js'
 import { sleep } from '../utils/sleep.js'
 import { isExtractModeActive } from '../memdir/paths.js'
 
+function writePrintTrace(label: string): void {
+  if (process.env.CLAUDE_CODE_STARTUP_TRACE === '1') {
+    process.stderr.write(`[print-trace] ${label}\n`)
+  }
+}
+
 // Dead code elimination: conditional imports
 /* eslint-disable @typescript-eslint/no-require-imports */
 const coordinatorModeModule = feature('COORDINATOR_MODE')
@@ -1007,6 +1013,7 @@ function runHeadlessStreaming(
   },
   turnInterruptionState?: TurnInterruptionState,
 ): AsyncIterable<StdoutMessage> {
+  writePrintTrace('enter runHeadlessStreaming')
   let running = false
   let runPhase:
     | 'draining_commands'
@@ -1032,6 +1039,7 @@ function runHeadlessStreaming(
     void gracefulShutdown(0)
   }
   process.on('SIGINT', sigintHandler)
+  writePrintTrace('after sigint handler registration')
 
   // Dump run()'s state at SIGTERM so a stuck session's healthsweep can name
   // the do/while(waitingForAgents) poll without reading the transcript.
@@ -1048,6 +1056,7 @@ function runHeadlessStreaming(
       bg_tasks: bg,
     })
   })
+  writePrintTrace('after run-state cleanup registration')
 
   // Wire the central onChangeAppState mode-diff hook to the SDK output stream.
   // This fires whenever ANY code path mutates toolPermissionContext.mode —
@@ -1077,6 +1086,7 @@ function runHeadlessStreaming(
       })
     }
   })
+  writePrintTrace('after permission mode listener registration')
 
   // Prompt suggestion tracking (push model)
   const suggestionState: {
@@ -1122,6 +1132,7 @@ function runHeadlessStreaming(
       })
     })
   }
+  writePrintTrace('after auth status listener setup')
 
   // Set up rate limit status listener to emit SDKRateLimitEvent for all status changes.
   // Emitting for all statuses (including 'allowed') ensures consumers can clear warnings
@@ -1138,6 +1149,7 @@ function runHeadlessStreaming(
     }
   }
   statusListeners.add(rateLimitListener)
+  writePrintTrace('after rate limit listener setup')
 
   // Messages for internal tracking, directly mutated by ask(). These messages
   // include Assistant, User, Attachment, and Progress messages.
@@ -1165,6 +1177,7 @@ function runHeadlessStreaming(
   const pendingSeeds = createFileStateCacheWithSizeLimit(
     READ_FILE_STATE_CACHE_SIZE,
   )
+  writePrintTrace('after read state setup')
 
   // Auto-resume interrupted turns on restart so CC continues from where it
   // left off without requiring the SDK to re-send the prompt.
@@ -1217,6 +1230,7 @@ function runHeadlessStreaming(
       ...(hasAutoMode && { supportsAutoMode: true }),
     }
   })
+  writePrintTrace('after model infos setup')
   let activeUserSpecifiedModel = options.userSpecifiedModel
 
   function injectModelSwitchBreadcrumbs(
@@ -1459,6 +1473,7 @@ function runHeadlessStreaming(
   }
 
   void updateSdkMcp()
+  writePrintTrace('after initial updateSdkMcp kick')
 
   // State for dynamically added MCP servers (via mcp_set_servers control message)
   // These are separate from SDK MCP servers and support all transport types
@@ -1742,9 +1757,11 @@ function runHeadlessStreaming(
       void installPluginsAndApplyMcpInBackground()
     }
   }
+  writePrintTrace('after plugin install scheduling')
 
   // Idle timeout management
   const idleTimeout = createIdleTimeoutManager(() => !running)
+  writePrintTrace('after idle timeout setup')
 
   // Mutable commands and agents for hot reloading
   let currentCommands = commands
@@ -1827,6 +1844,7 @@ function runHeadlessStreaming(
       currentCommands = newCommands
     })
   })
+  writePrintTrace('after skill change subscription')
 
   // Proactive mode: schedule a tick to keep the model looping autonomously.
   // setTimeout(0) yields to the event loop so pending stdin messages
@@ -1861,21 +1879,29 @@ function runHeadlessStreaming(
       abortController.abort('interrupt')
     }
   })
+  writePrintTrace('after command queue subscription')
 
   const run = async () => {
+    writePrintTrace('run called')
     if (running) {
+      writePrintTrace('run early-return already running')
       return
     }
 
     running = true
+    writePrintTrace('run set running=true')
     runPhase = undefined
+    writePrintTrace('before notifySessionStateChanged(running)')
     notifySessionStateChanged('running')
+    writePrintTrace('after notifySessionStateChanged(running)')
     idleTimeout.stop()
+    writePrintTrace('after idleTimeout.stop')
 
     headlessProfilerCheckpoint('run_entry')
     // TODO(custom-tool-refactor): Should move to the init message, like browser
 
     await updateSdkMcp()
+    writePrintTrace('after updateSdkMcp')
     headlessProfilerCheckpoint('after_updateSdkMcp')
 
     // Resolve deferred plugin installation (CLAUDE_CODE_SYNC_PLUGIN_INSTALL).
@@ -2692,6 +2718,7 @@ function runHeadlessStreaming(
       }
     })
   }
+  writePrintTrace('after uds inbox setup')
 
   // Cron scheduler: runs scheduled_tasks.json tasks in SDK/-p mode.
   // Mirrors REPL's useScheduledTasks hook. Fired prompts enqueue + kick
@@ -2732,6 +2759,7 @@ function runHeadlessStreaming(
     })
     cronScheduler.start()
   }
+  writePrintTrace('after cron scheduler setup')
 
   const sendControlResponseSuccess = function (
     message: SDKControlRequest,
@@ -2776,6 +2804,7 @@ function runHeadlessStreaming(
       },
     })
   })
+  writePrintTrace('after unexpected response callback setup')
 
   // Track active OAuth flows per server so we can abort a previous flow
   // when a new mcp_authenticate request arrives for the same server.
@@ -2803,6 +2832,7 @@ function runHeadlessStreaming(
     service: OAuthService
     flow: Promise<void>
   } | null = null
+  writePrintTrace('before message loop launch')
 
   // This is essentially spawning a parallel async task- we have two
   // running in parallel- one reading from stdin and adding to the
@@ -2812,8 +2842,10 @@ function runHeadlessStreaming(
   // the last generation of the queue has complete.
   void (async () => {
     let initialized = false
+    writePrintTrace('message loop started')
     logForDiagnosticsNoPII('info', 'cli_message_loop_started')
     for await (const message of structuredIO.structuredInput) {
+      writePrintTrace(`message loop received:${message.type}`)
       // Non-user events are handled inline (no queue). started→completed in
       // the same tick carries no information, so only fire completed.
       // control_response is reported by StructuredIO.processLine (which also
@@ -4103,10 +4135,17 @@ function runHeadlessStreaming(
         mode: 'prompt' as const,
         // file_attachments rides the protobuf catchall from the web composer.
         // Same-ref no-op when absent (no 'file_attachments' key).
+        // Trace initial input bridging into the run loop.
+        // Helps distinguish "no message arrived" from "run() hung".
+        //
+        // Keep behind CLAUDE_CODE_STARTUP_TRACE to avoid noisy stderr in normal use.
+        //
+        // eslint-disable-next-line no-inner-declarations
         value: await resolveAndPrepend(message, message.message.content),
         uuid: message.uuid,
         priority: message.priority,
       })
+      writePrintTrace('message loop enqueued user prompt')
       // Increment prompt count for attribution tracking and save snapshot
       // The snapshot persists promptCount so it survives compaction
       if (feature('COMMIT_ATTRIBUTION')) {
@@ -4119,6 +4158,7 @@ function runHeadlessStreaming(
           }),
         }))
       }
+      writePrintTrace('message loop calling run()')
       void run()
     }
     inputClosed = true

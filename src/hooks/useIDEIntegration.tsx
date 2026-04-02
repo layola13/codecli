@@ -25,6 +25,9 @@ export function useIDEIntegration(t0) {
   let t2;
   if ($[0] !== autoConnectIdeFlag || $[1] !== ideToInstallExtension || $[2] !== setDynamicMcpConfig || $[3] !== setIDEInstallationState || $[4] !== setShowIdeOnboarding) {
     t1 = () => {
+      if (isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_STARTUP_DIALOGS)) {
+        return;
+      }
       const addIde = function addIde(ide) {
         if (!ide) {
           return;

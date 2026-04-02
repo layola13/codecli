@@ -66,6 +66,7 @@ export type SpinnerAnimationRowProps = {
   // Thinking (state owned by parent, mode-dependent)
   thinkingStatus: 'thinking' | number | null;
   effortSuffix: string;
+  ttftText?: string | null;
 };
 
 /**
@@ -98,7 +99,8 @@ export function SpinnerAnimationRow({
   foregroundedTeammate,
   leaderIsIdle = false,
   thinkingStatus,
-  effortSuffix
+  effortSuffix,
+  ttftText
 }: SpinnerAnimationRowProps): React.ReactNode {
   const [viewportRef, time] = useAnimationFrame(reducedMotion ? null : 50);
 
@@ -171,11 +173,13 @@ export function SpinnerAnimationRow({
   // === Thinking text (may shrink to fit) ===
   let thinkingText = thinkingStatus === 'thinking' ? `thinking${effortSuffix}` : typeof thinkingStatus === 'number' ? `thought for ${Math.max(1, Math.round(thinkingStatus / 1000))}s` : null;
   let thinkingWidthValue = thinkingText ? stringWidth(thinkingText) : 0;
+  const ttftWidth = useMemo(() => ttftText ? stringWidth(ttftText) : 0, [ttftText]);
 
   // === Progressive width gating ===
   const messageWidth = glimmerMessageWidth + 2;
   const sep = SEP_WIDTH;
   const wantsThinking = thinkingStatus !== null;
+  const wantsTtft = Boolean(ttftText);
   const wantsTimerAndTokens = verbose || hasRunningTeammates || effectiveElapsedMs > SHOW_TOKENS_AFTER_MS;
   const availableSpace = columns - messageWidth - 5;
   let showThinking = wantsThinking && availableSpace > thinkingWidthValue;
@@ -187,10 +191,12 @@ export function SpinnerAnimationRow({
     }
   }
   const usedAfterThinking = showThinking ? thinkingWidthValue + sep : 0;
-  const showTimer = wantsTimerAndTokens && availableSpace > usedAfterThinking + timerWidth;
-  const usedAfterTimer = usedAfterThinking + (showTimer ? timerWidth + sep : 0);
+  const showTtft = wantsTtft && availableSpace > usedAfterThinking + ttftWidth;
+  const usedAfterTtft = usedAfterThinking + (showTtft ? ttftWidth + sep : 0);
+  const showTimer = wantsTimerAndTokens && availableSpace > usedAfterTtft + timerWidth;
+  const usedAfterTimer = usedAfterTtft + (showTimer ? timerWidth + sep : 0);
   const showTokens = wantsTimerAndTokens && totalTokens > 0 && availableSpace > usedAfterTimer + tokensWidth;
-  const thinkingOnly = showThinking && thinkingStatus === 'thinking' && !spinnerSuffix && !showTimer && !showTokens && true;
+  const thinkingOnly = showThinking && thinkingStatus === 'thinking' && !spinnerSuffix && !showTtft && !showTimer && !showTokens;
 
   // === Thinking shimmer color (formerly ThinkingShimmerText's own timer) ===
   // Same sine-wave opacity, but derived from our shared `time` instead of a
@@ -202,16 +208,18 @@ export function SpinnerAnimationRow({
   // === Build status parts ===
   const parts = [...(spinnerSuffix ? [<Text dimColor key="suffix">
             {spinnerSuffix}
+          </Text>] : []), ...(showThinking && thinkingText ? [thinkingStatus === 'thinking' && !reducedMotion ? <Text key="thinking" color={thinkingShimmerColor}>
+              {thinkingOnly ? `(${thinkingText})` : thinkingText}
+            </Text> : <Text dimColor key="thinking">
+              {thinkingText}
+            </Text>] : []), ...(showTtft && ttftText ? [<Text dimColor key="ttft">
+            {ttftText}
           </Text>] : []), ...(showTimer ? [<Text dimColor key="elapsedTime">
             {timerText}
           </Text>] : []), ...(showTokens ? [<Box flexDirection="row" key="tokens">
             {!hasRunningTeammates && <SpinnerModeGlyph mode={mode} />}
             <Text dimColor>{tokenCount} tokens</Text>
-          </Box>] : []), ...(showThinking && thinkingText ? [thinkingStatus === 'thinking' && !reducedMotion ? <Text key="thinking" color={thinkingShimmerColor}>
-              {thinkingOnly ? `(${thinkingText})` : thinkingText}
-            </Text> : <Text dimColor key="thinking">
-              {thinkingText}
-            </Text>] : [])];
+          </Box>] : [])];
   const status = foregroundedTeammate && !foregroundedTeammate.isIdle ? <>
         <Text dimColor>(esc to interrupt </Text>
         <Text color={toInkColor(foregroundedTeammate.identity.color)}>

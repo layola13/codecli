@@ -191,6 +191,30 @@ export function getToolsForDefaultPreset(): string[] {
  * NOTE: This MUST stay in sync with https://console.statsig.com/4aF3Ewatb6xPVpCwxb5nA3/dynamic_configs/claude_code_global_system_caching, in order to cache the system prompt across users.
  */
 export function getAllBaseTools(): Tools {
+  const trace = (label: string) => {
+    if (process.env.CLAUDE_CODE_STARTUP_TRACE === '1') {
+      process.stderr.write(`[tools-trace] ${label}\n`)
+    }
+  }
+  trace('getAllBaseTools start')
+  const embeddedSearchTools = hasEmbeddedSearchTools()
+  trace(`embeddedSearchTools=${embeddedSearchTools}`)
+  const todoV2Enabled = isTodoV2Enabled()
+  trace(`todoV2Enabled=${todoV2Enabled}`)
+  const worktreeModeEnabled = isWorktreeModeEnabled()
+  trace(`worktreeModeEnabled=${worktreeModeEnabled}`)
+  const agentSwarmsEnabled = isAgentSwarmsEnabled()
+  trace(`agentSwarmsEnabled=${agentSwarmsEnabled}`)
+  trace('before getSendMessageTool')
+  const sendMessageTool = getSendMessageTool()
+  trace('after getSendMessageTool')
+  trace('before getPowerShellTool')
+  const powerShellTool = getPowerShellTool()
+  trace(`after getPowerShellTool=${powerShellTool ? powerShellTool.name : 'null'}`)
+  trace('before isToolSearchEnabledOptimistic')
+  const toolSearchEnabledOptimistic = isToolSearchEnabledOptimistic()
+  trace(`after isToolSearchEnabledOptimistic=${toolSearchEnabledOptimistic}`)
+
   return [
     AgentTool,
     TaskOutputTool,
@@ -198,7 +222,7 @@ export function getAllBaseTools(): Tools {
     // Ant-native builds have bfs/ugrep embedded in the bun binary (same ARGV0
     // trick as ripgrep). When available, find/grep in Claude's shell are aliased
     // to these fast tools, so the dedicated Glob/Grep tools are unnecessary.
-    ...(hasEmbeddedSearchTools() ? [] : [GlobTool, GrepTool]),
+    ...(embeddedSearchTools ? [] : [GlobTool, GrepTool]),
     ExitPlanModeV2Tool,
     FileReadTool,
     FileEditTool,
@@ -212,20 +236,20 @@ export function getAllBaseTools(): Tools {
     SkillTool,
     EnterPlanModeTool,
     ...(process.env.USER_TYPE === 'ant' ? [ConfigTool] : []),
-    ...(process.env.USER_TYPE === 'ant' ? [TungstenTool] : []),
+    ...(process.env.USER_TYPE === 'ant' && TungstenTool ? [TungstenTool] : []),
     ...(SuggestBackgroundPRTool ? [SuggestBackgroundPRTool] : []),
     ...(WebBrowserTool ? [WebBrowserTool] : []),
-    ...(isTodoV2Enabled()
+    ...(todoV2Enabled
       ? [TaskCreateTool, TaskGetTool, TaskUpdateTool, TaskListTool]
       : []),
     ...(OverflowTestTool ? [OverflowTestTool] : []),
     ...(CtxInspectTool ? [CtxInspectTool] : []),
     ...(TerminalCaptureTool ? [TerminalCaptureTool] : []),
     ...(isEnvTruthy(process.env.ENABLE_LSP_TOOL) ? [LSPTool] : []),
-    ...(isWorktreeModeEnabled() ? [EnterWorktreeTool, ExitWorktreeTool] : []),
-    getSendMessageTool(),
+    ...(worktreeModeEnabled ? [EnterWorktreeTool, ExitWorktreeTool] : []),
+    sendMessageTool,
     ...(ListPeersTool ? [ListPeersTool] : []),
-    ...(isAgentSwarmsEnabled()
+    ...(agentSwarmsEnabled
       ? [getTeamCreateTool(), getTeamDeleteTool()]
       : []),
     ...(VerifyPlanExecutionTool ? [VerifyPlanExecutionTool] : []),
@@ -239,14 +263,14 @@ export function getAllBaseTools(): Tools {
     ...(SendUserFileTool ? [SendUserFileTool] : []),
     ...(PushNotificationTool ? [PushNotificationTool] : []),
     ...(SubscribePRTool ? [SubscribePRTool] : []),
-    ...(getPowerShellTool() ? [getPowerShellTool()] : []),
+    ...(powerShellTool ? [powerShellTool] : []),
     ...(SnipTool ? [SnipTool] : []),
     ...(process.env.NODE_ENV === 'test' ? [TestingPermissionTool] : []),
     ListMcpResourcesTool,
     ReadMcpResourceTool,
     // Include ToolSearchTool when tool search might be enabled (optimistic check)
     // The actual decision to defer tools happens at request time in claude.ts
-    ...(isToolSearchEnabledOptimistic() ? [ToolSearchTool] : []),
+    ...(toolSearchEnabledOptimistic ? [ToolSearchTool] : []),
   ]
 }
 
@@ -269,6 +293,12 @@ export function filterToolsByDenyRules<
 }
 
 export const getTools = (permissionContext: ToolPermissionContext): Tools => {
+  const trace = (label: string) => {
+    if (process.env.CLAUDE_CODE_STARTUP_TRACE === '1') {
+      process.stderr.write(`[tools-trace] ${label}\n`)
+    }
+  }
+
   // Simple mode: only Bash, Read, and Edit tools
   if (isEnvTruthy(process.env.CLAUDE_CODE_SIMPLE)) {
     // --bare + REPL mode: REPL wraps Bash/Read/Edit/etc inside the VM, so
@@ -304,7 +334,9 @@ export const getTools = (permissionContext: ToolPermissionContext): Tools => {
     SYNTHETIC_OUTPUT_TOOL_NAME,
   ])
 
+  trace('before getAllBaseTools')
   const tools = getAllBaseTools().filter(tool => !specialTools.has(tool.name))
+  trace(`after getAllBaseTools count=${tools.length}`)
 
   // Filter out tools that are denied by the deny rules
   let allowedTools = filterToolsByDenyRules(tools, permissionContext)
@@ -322,7 +354,12 @@ export const getTools = (permissionContext: ToolPermissionContext): Tools => {
     }
   }
 
-  const isEnabled = allowedTools.map(_ => _.isEnabled())
+  const isEnabled = allowedTools.map(tool => {
+    trace(`before isEnabled ${tool.name}`)
+    const enabled = tool.isEnabled()
+    trace(`after isEnabled ${tool.name}=${enabled}`)
+    return enabled
+  })
   return allowedTools.filter((_, i) => isEnabled[i])
 }
 
