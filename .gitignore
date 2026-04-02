@@ -32,3 +32,5 @@ dist/
 .code_index/
 .codex/
 .claude/
+tmp/
+.tmp*/
