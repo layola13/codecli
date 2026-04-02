@@ -34,3 +34,6 @@ dist/
 .claude/
 tmp/
 .tmp*/
+
+# Transpiled vendor helper outputs
+vendor/*-src/*.js
