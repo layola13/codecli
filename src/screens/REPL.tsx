@@ -70,6 +70,7 @@ import { SpinnerWithVerb, BriefIdleStatus, type SpinnerMode } from '../component
 import { getSystemPrompt } from '../constants/prompts.js';
 import { buildEffectiveSystemPrompt } from '../utils/systemPrompt.js';
 import { getSystemContext, getUserContext } from '../context.js';
+import { persistCompressedSessionState } from '../context/compression/runtime.js';
 import { getMemoryFiles } from '../utils/claudemd.js';
 import { startBackgroundHousekeeping } from '../utils/backgroundHousekeeping.js';
 import { getTotalCost, saveCurrentSessionCosts, resetCostState, getStoredSessionCosts } from '../cost-tracker.js';
@@ -2848,6 +2849,8 @@ export function REPL({
 
     // Log query profiling report if enabled
     logQueryProfileReport();
+
+    await persistCompressedSessionState(messagesRef.current);
 
     // Signal that a query turn has completed successfully
     await onTurnComplete?.(messagesRef.current);

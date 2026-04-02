@@ -4,7 +4,7 @@ const index = {
   type: 'local',
   name: 'index',
   description:
-    'Build a codebase structure index and Python skeleton under .code_index',
+    'Build a codebase structure index, file dependency DOT, and Python skeleton under .code_index',
   argumentHint: '[path] [--output DIR] [--max-file-bytes N]',
   supportsNonInteractive: true,
   disableModelInvocation: true,
@@ -12,4 +12,3 @@ const index = {
 } satisfies Command
 
 export default index
-

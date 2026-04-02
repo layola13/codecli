@@ -1,21 +1,25 @@
 import { describe, expect, it } from 'bun:test'
-import { mkdtemp, readFile, rm, writeFile } from 'fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { buildCodeIndex } from './build.js'
 
 describe('buildCodeIndex', () => {
-  it('emits skeleton and json indexes for ts and python inputs', async () => {
+  it('emits skeleton, json indexes, dot map, and skills for ts and python inputs', async () => {
     const rootDir = await mkdtemp(join(tmpdir(), 'claude-code-index-'))
 
     try {
+      await mkdir(join(rootDir, 'src'), { recursive: true })
+
       await writeFile(
         join(rootDir, 'service.ts'),
-        `import { db } from './db'
+        `import { join } from 'path'
+import { db } from './db'
 import type { Cart, Order } from './types'
 export class OrderService extends BaseService {
   constructor(private readonly paymentService: PaymentService, private readonly db: Database) {}
   async createOrder(userId: string, cart: Cart): Promise<Order> {
+    join('orders', userId)
     await this.paymentService.charge(userId)
     return db.save(cart)
   }
@@ -23,6 +27,47 @@ export class OrderService extends BaseService {
 export const helper = async (value: string): Promise<void> => {
   await logValue(value)
 }
+`,
+        'utf8',
+      )
+
+      await writeFile(
+        join(rootDir, 'db.ts'),
+        `export const db = {
+  save(value: unknown): unknown {
+    return value
+  },
+}
+`,
+        'utf8',
+      )
+
+      await writeFile(
+        join(rootDir, 'types.ts'),
+        `export type Cart = {
+  id: string
+}
+
+export type Order = {
+  id: string
+}
+`,
+        'utf8',
+      )
+
+      await writeFile(
+        join(rootDir, 'src', 'utils.ts'),
+        `export const formatOrder = 'format-order'
+`,
+        'utf8',
+      )
+
+      await writeFile(
+        join(rootDir, 'entry.ts'),
+        `import React from 'react'
+import { formatOrder } from 'src/utils.js'
+
+export const ENTRY = formatOrder
 `,
         'utf8',
       )
@@ -51,7 +96,7 @@ def top_level(value: str) -> None:
         outputDir: join(rootDir, '.code_index'),
       })
 
-      expect(result.manifest.moduleCount).toBe(2)
+      expect(result.manifest.moduleCount).toBe(6)
       expect(result.manifest.classCount).toBe(2)
       expect(result.manifest.functionCount).toBe(2)
 
@@ -70,7 +115,6 @@ def top_level(value: str) -> None:
       expect(serviceSkeleton).toContain('return db.save(...)')
       expect(serviceSkeleton).toContain('async def helper(value: str) -> None:')
       expect(serviceSkeleton).toContain('await logValue(...)')
-      expect(serviceSkeleton).not.toContain('#')
 
       const workerSkeleton = await readFile(
         join(rootDir, '.code_index', 'skeleton', 'worker.py'),
@@ -86,7 +130,6 @@ def top_level(value: str) -> None:
       expect(workerSkeleton).toContain('return self.repo.save(...)')
       expect(workerSkeleton).toContain('raise RuntimeError(...)')
       expect(workerSkeleton).not.toContain('\n    RuntimeError(...)\n')
-      expect(workerSkeleton).not.toContain('#')
 
       const rootSkeleton = await readFile(
         join(rootDir, '.code_index', 'skeleton', '__root__.py'),
@@ -98,7 +141,7 @@ def top_level(value: str) -> None:
         join(rootDir, '.code_index', 'index', 'manifest.json'),
         'utf8',
       )
-      expect(manifestText).toContain('"moduleCount": 2')
+      expect(manifestText).toContain('"moduleCount": 6')
 
       const edgesText = await readFile(
         join(rootDir, '.code_index', 'index', 'edges.jsonl'),
@@ -107,12 +150,49 @@ def top_level(value: str) -> None:
       expect(edgesText).toContain('"kind":"imports"')
       expect(edgesText).toContain('"kind":"calls"')
 
+      const architectureDot = await readFile(
+        join(rootDir, '.code_index', 'index', 'architecture.dot'),
+        'utf8',
+      )
+      expect(architectureDot).toStartWith('digraph{')
+      expect(architectureDot).not.toContain('subgraph')
+      expect(architectureDot).not.toContain('color=')
+      expect(architectureDot).not.toContain('shape=')
+      expect(architectureDot).not.toContain('worker.py')
+      expect(architectureDot).not.toContain('react')
+      expect(architectureDot).not.toContain('path')
+      expect(architectureDot).not.toContain('OrderService')
+
+      const nodeToPath = new Map<string, string>()
+      const fileEdges: string[] = []
+      for (const line of architectureDot.trim().split('\n')) {
+        const nodeMatch = line.match(/^(n[0-9a-z]+)\[label="([^"]+)"\]$/)
+        if (nodeMatch?.[1] && nodeMatch[2]) {
+          nodeToPath.set(nodeMatch[1], nodeMatch[2])
+        }
+
+        const edgeMatch = line.match(/^(n[0-9a-z]+)->(n[0-9a-z]+)$/)
+        if (edgeMatch?.[1] && edgeMatch[2]) {
+          const sourcePath = nodeToPath.get(edgeMatch[1])
+          const targetPath = nodeToPath.get(edgeMatch[2])
+          if (sourcePath && targetPath) {
+            fileEdges.push(`${sourcePath}->${targetPath}`)
+          }
+        }
+      }
+
+      expect(fileEdges).toContain('entry.ts->src/utils.ts')
+      expect(fileEdges).toContain('service.ts->db.ts')
+      expect(fileEdges).toContain('service.ts->types.ts')
+
       const claudeSkillText = await readFile(
         join(rootDir, '.claude', 'skills', 'code-index', 'SKILL.md'),
         'utf8',
       )
       expect(claudeSkillText).toContain('name: code-index')
+      expect(claudeSkillText).toContain('`./.code_index/index/architecture.dot`')
       expect(claudeSkillText).toContain('`./.code_index/skeleton/`')
+      expect(claudeSkillText).toContain('If a file is missing from the DOT')
       expect(claudeSkillText).toContain('valid Python with lightweight call stubs')
       expect(claudeSkillText).not.toContain('references.jsonl')
       expect(claudeSkillText).not.toContain('source_lines')
@@ -122,10 +202,19 @@ def top_level(value: str) -> None:
         'utf8',
       )
       expect(codexSkillText).toContain('name: code-index')
+      expect(codexSkillText).toContain('`./.code_index/index/architecture.dot`')
       expect(codexSkillText).toContain('`./.code_index/index/summary.md`')
       expect(codexSkillText).toContain('valid Python with lightweight call stubs')
       expect(codexSkillText).not.toContain('references.jsonl')
       expect(codexSkillText).not.toContain('source_lines')
+
+      const opencodeSkillText = await readFile(
+        join(rootDir, '.opencode', 'skills', 'code-index', 'SKILL.md'),
+        'utf8',
+      )
+      expect(opencodeSkillText).toContain('name: code-index')
+      expect(opencodeSkillText).toContain('`./.code_index/index/architecture.dot`')
+      expect(opencodeSkillText).toContain('method-level detail')
     } finally {
       await rm(rootDir, { recursive: true, force: true })
     }

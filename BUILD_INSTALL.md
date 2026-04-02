@@ -29,13 +29,12 @@
 - `src/` 依赖部分生成文件，但当前目录里并不完整
 - `node_modules` 是裁剪后的发布依赖，不适合直接做源码级重打包
 
-因此当前采用的是：
+因此当前采用两条编译路径：
 
-1. 先重建 `package.json`
-2. 从同版本 npm tarball 恢复发布入口 `cli.js`
-3. 使用 Bun 直接把发布入口编译成本地二进制
+1. 默认本地路径：直接从 `src/entrypoints/cli.tsx` 做源码级 Bun 编译
+2. 兼容兜底路径：继续保留基于发布包 `cli.js` 的 patch 编译
 
-这条路径更稳定，也更贴近“这个包”的真实发布形态。
+其中本地开发默认走第一条，不再依赖 `cli.js patch`。
 
 ## 3. 前置条件
 
@@ -55,21 +54,22 @@ bun --version
 
 ## 4. 关键文件
 
-当前编译/安装流程依赖这些文件：
+当前源码直编依赖这些文件：
 
 - `package.json`
 - `scripts/bun-build.mjs`
-- `scripts/patch-cli-sidecar.mjs`
-- `cli.js`
+- `scripts/postinstall.sh`
+- `src/entrypoints/cli.tsx`
+- `shims/*`
 - `vendor/audio-capture/*`
 - `vendor/ripgrep/*`
 
 其中：
 
-- `package.json` 已改成 `claudecode`
+- `package.json` 已改成 `claudecode`，并补齐了源码直编依赖
 - `scripts/bun-build.mjs` 支持 `--source` / `--published` 显式选择编译入口
-- `scripts/patch-cli-sidecar.mjs` 负责给发布入口 `cli.js` 打补丁
-- `cli.js` 来自 `@anthropic-ai/claude-code@2.1.88` 的发布包
+- `scripts/postinstall.sh` 会补齐 `@ant/*` stub，以及修复本地 `sandbox-runtime` 的包入口
+- `cli.js` 和 `scripts/patch-cli-sidecar.mjs` 现在仅用于兼容兜底的发布包编译
 
 ## 5. `cli.js` 的获取方式
 
@@ -103,25 +103,47 @@ cp -R package/vendor/ripgrep ../vendor/ripgrep
 
 ## 6. 编译命令
 
-在项目根目录执行：
+首次安装依赖时建议：
+
+```bash
+AUTHORIZED=1 bun install
+```
+
+其中 `AUTHORIZED=1` 只是绕过上游保留的发布保护脚本，不影响本地开发编译。
+
+在项目根目录执行默认本地编译：
 
 ```bash
 bun run compile:bun
 ```
 
-当前仓库里的构建链是两段：
+现在默认本地构建链是：
 
 ```bash
-bun run build:index-bundle
+bun scripts/bun-build.mjs --compile --source
+```
+
+如果你想先清空旧产物，再做一次干净重编译，执行：
+
+```bash
+rm -rf dist
 bun run compile:bun
 ```
 
 其中：
 
-- `build:index-bundle` 先把 `src/commands/index/cliBundleEntry.ts` 打成 `src/commands/index/cliBundle.mjs`
-- `compile:bun` 会自动先执行 `build:index-bundle`，再显式传 `--published`
+- 入口：`src/entrypoints/cli.tsx`
+- 输出：`dist/claudecode`
+- 类型：Bun standalone executable
+- `/index`、`/pin`、`/unpin`、`/compress`、`/compress-status` 都直接来自源码命令注册链
 
-`compile:bun` 的等价逻辑：
+兼容兜底的发布包路径保留为：
+
+```bash
+bun run compile:bun:published
+```
+
+它的等价逻辑仍然是：
 
 - 先生成：`src/commands/index/cliBundle.mjs`
 - 再执行：`scripts/patch-cli-sidecar.mjs`
@@ -130,11 +152,11 @@ bun run compile:bun
 - 输出：`dist/claudecode`
 - 类型：Bun standalone executable
 
-这里最容易误解的一点是：
+这里最容易误解的一点现在变成：
 
-- `src/commands/index/cliBundle.mjs` 只是 sidecar bundle
-- 真正的主入口仍然是上游发布包里的 `cli.js`
-- 所以新增命令如果要进入最终二进制，通常需要先通过 `scripts/patch-cli-sidecar.mjs` 注入到 `cli.js`
+- 默认 `compile:bun` 已经不再走 `cli.js`
+- `src/commands/index/cliBundle.mjs` 只在 `compile:bun:published` 这条兼容路径里作为 sidecar 使用
+- 只有继续走发布包编译时，新增命令才需要通过 `scripts/patch-cli-sidecar.mjs` 注入到 `cli.js`
 
 详细说明见：
 
@@ -144,6 +166,13 @@ bun run compile:bun
 
 ```bash
 ls -lh dist/claudecode
+```
+
+本次实测也已验证过下面这条干净编译链是可用的：
+
+```bash
+rm -rf dist
+bun run compile:bun
 ```
 
 ## 7. 安装命令
@@ -187,7 +216,7 @@ file ~/.local/bin/claudecode
 当前实测输出应类似：
 
 ```text
-2.1.88+local.2 (Claude Code)
+2.1.88+local.3 (Claude Code)
 ```
 
 ### 验证帮助页
@@ -204,7 +233,7 @@ file ~/.local/bin/claudecode
 ~/.local/bin/claudecode
 ```
 
-当前安装脚本走的是上游发布入口 `cli.js`，产品名文案本身也沿用上游，所以会看到：
+默认本地编译现在已经不走上游发布入口 `cli.js`，但产品名文案本身仍然大多沿用上游，所以会看到：
 
 - `--version` 仍显示 `Claude Code`
 - `--help` 的 Usage 可能仍显示 `claude`
@@ -213,9 +242,17 @@ file ~/.local/bin/claudecode
 
 ## 10. 重新编译
 
-后续如果你改了 `cli.js`、`package.json` 或 `scripts/bun-build.mjs`，重新执行：
+后续如果你改了源码、`package.json` 或 `scripts/bun-build.mjs`，重新执行：
 
 ```bash
+bun run compile:bun
+bun run install:local
+```
+
+如果你希望每次都先删除旧产物，再重新编译：
+
+```bash
+rm -rf dist
 bun run compile:bun
 bun run install:local
 ```
@@ -249,7 +286,7 @@ rm -f dist/claudecode
 
 ```bash
 # 1. 只修改 package.json
-sed -i 's/"version": "2.1.88+local.2"/"version": "2.1.88+local.3"/' package.json
+sed -i 's/"version": "2.1.88+local.3"/"version": "2.1.88+local.4"/' package.json
 
 # 2. 重新编译安装
 bun run compile:bun

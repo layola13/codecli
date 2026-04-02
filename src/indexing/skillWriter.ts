@@ -33,6 +33,7 @@ function renderSkillMarkdown(args: {
   outputDir: string
 }): string {
   const outputPath = formatProjectPath(args.rootDir, args.outputDir)
+  const architecturePath = `${outputPath}/index/architecture.dot`
   const summaryPath = `${outputPath}/index/summary.md`
   const skeletonPath = `${outputPath}/skeleton`
   const indexPath = `${outputPath}/__index__.py`
@@ -48,10 +49,12 @@ function renderSkillMarkdown(args: {
     '# Code Index',
     '',
     '## Instructions',
-    `- Start with \`${indexPath}\` for entry points, top directories, and high-priority symbols.`,
+    `- Start with \`${architecturePath}\` for the smallest file-level dependency map. Outgoing edges show what a file depends on; incoming edges show likely impact.`,
+    `- Then use \`${indexPath}\` for entry points, top directories, and high-priority symbols.`,
     `- Read \`${summaryPath}\` for a human-readable overview.`,
-    `- Browse \`${skeletonPath}/\` as the primary structure view; skeleton functions include concise stub calls instead of full method bodies.`,
+    `- Browse \`${skeletonPath}/\` when you need method-level detail; skeleton functions include concise stub calls instead of full method bodies.`,
     `- Use \`${modulesPath}\` and \`${symbolsPath}\` only when you need exact module or symbol-level detail.`,
+    '- If a file is missing from the DOT, no internal file-level dependency edge was resolved for it; jump straight to the skeleton or JSON index.',
     '- The skeleton is valid Python with lightweight call stubs, inheritance, and constructor assignments for easier grep and AST-based lookup.',
     '- If the index is stale after edits, rerun `/index`.',
     '',

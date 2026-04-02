@@ -130,7 +130,118 @@
 - 尽量把对 `cli.js` 的修改收敛到脚本里，不要手工散改
 - 如果未来能恢复完整源码级构建，再考虑彻底取消 `--published` 路径下的 patch
 
-## 10. 一句话总结
+## 10. 不安装到全局时，如何直接运行新版本
+
+如果只是验证本地新增功能，不需要先执行安装。
+
+编译完成后，直接运行当前工作区里刚生成的二进制即可：
+
+```bash
+./dist/claudecode --version
+./dist/claudecode --help
+./dist/claudecode
+```
+
+这里的 `./dist/claudecode` 就是本地最新编译结果。
+
+只要重新执行一次：
+
+```bash
+bun run compile:bun
+```
+
+后面的检查都会命中你刚改过的版本，而不是系统里旧的全局安装。
+
+## 11. 这次两个新功能怎么检查
+
+### 检查 1：dot 全局地图
+
+推荐两种方式，二选一：
+
+```bash
+# 方式 A：直接走 builtin command
+./dist/claudecode index .
+```
+
+或者：
+
+```bash
+# 方式 B：进入 REPL 后执行 slash command
+./dist/claudecode
+/index .
+```
+
+检查产物：
+
+```bash
+ls .code_index/index
+sed -n '1,40p' .code_index/index/architecture.dot
+```
+
+这里当前应该重点看的是：
+
+- `./.code_index/index/architecture.dot`
+
+这是现在 `/index` 生成的精简文件级依赖图。
+
+不是旧的：
+
+- `./.code_index/skeleton_dependencies.dot`
+
+### 检查 2：新的上下文压缩
+
+这个分两种。
+
+#### 1. 交互模式每轮结束后自动写文件
+
+现在自动压缩挂在 REPL 每轮结束后的持久化路径上，所以要用上面的 REPL 跑，不是只跑 `-p`。
+
+推荐这样检查：
+
+```bash
+rm -rf .claude/context
+./dist/claudecode
+```
+
+进入 REPL 后，正常对话 1 到 2 轮；等 assistant 这一轮完成后，另开一个终端检查：
+
+```bash
+ls .claude/context
+sed -n '1,120p' .claude/context/session_state.py
+sed -n '1,120p' .claude/context/session_history.py
+sed -n '1,120p' .claude/context/session_metrics.py
+```
+
+当前自动写出的主要文件有：
+
+- `.claude/context/session_state.py`
+- `.claude/context/session_history.py`
+- `.claude/context/session_metrics.py`
+- `.claude/context/session_state.json`
+
+如果要继续验证“下一轮会不会吃到压缩上下文”，就在这些文件生成后再发下一条消息；当前实现会在下一轮构造 prompt 时读取最新的 `session_state.py`。
+
+#### 2. 手动命令
+
+手动检查同样建议在 REPL 内执行：
+
+```text
+/compress
+/compress-status
+```
+
+其中：
+
+- `/compress` 会立刻把当前会话压成结构化文件
+- `/compress-status` 会显示 turns、raw chars、compressed chars、slot counts 等统计
+
+这条链路对应的落点是：
+
+- 自动写入：`src/screens/REPL.tsx`
+- prompt 注入：`src/context.ts`
+- 手动命令：`src/commands/compress/`、`src/commands/compress-status/`
+
+## 12. 一句话总结
 
 现在不是“新增功能一定要 patch `cli.js`”，而是：
 

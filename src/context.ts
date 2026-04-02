@@ -11,6 +11,7 @@ import {
   getMemoryFiles,
 } from './utils/claudemd.js'
 import { getPinnedFactsContext } from './memdir/pinnedFacts.js'
+import { readCompressedSessionStateForPrompt } from './context/compression/runtime.js'
 import { logForDiagnosticsNoPII } from './utils/diagLogs.js'
 import { isBareMode, isEnvTruthy } from './utils/envUtils.js'
 import { execFileNoThrow } from './utils/execFileNoThrow.js'
@@ -153,7 +154,7 @@ export const getSystemContext = memoize(
 /**
  * This context is prepended to each conversation, and cached for the duration of the conversation.
  */
-export const getUserContext = memoize(
+const getBaseUserContext = memoize(
   async (): Promise<{
     [k: string]: string
   }> => {
@@ -193,4 +194,28 @@ export const getUserContext = memoize(
       currentDate: `Today's date is ${getLocalISODate()}.`,
     }
   },
+)
+
+type UserContextFn = (() => Promise<{ [k: string]: string }>) & {
+  cache: typeof getBaseUserContext.cache
+}
+
+export const getUserContext: UserContextFn = Object.assign(
+  async (): Promise<{
+    [k: string]: string
+  }> => {
+    const [baseContext, sessionState] = await Promise.all([
+      getBaseUserContext(),
+      readCompressedSessionStateForPrompt(),
+    ])
+
+    const { pinnedFacts, claudeMd, currentDate } = baseContext
+    return {
+      ...(pinnedFacts && { pinnedFacts }),
+      ...(sessionState && { sessionState }),
+      ...(claudeMd && { claudeMd }),
+      ...(currentDate && { currentDate }),
+    }
+  },
+  { cache: getBaseUserContext.cache },
 )

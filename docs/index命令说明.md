@@ -6,9 +6,10 @@
 
 它会生成：
 
-1. Python skeleton 工程
-2. JSONL 结构化索引
-3. 指向共享索引的 skill 文档
+1. 文件级依赖关系 DOT
+2. Python skeleton 工程
+3. JSONL 结构化索引
+4. 指向共享索引的 skill 文档
 
 默认输出目录：
 
@@ -37,6 +38,7 @@
 │   ├── __root__.py
 │   └── ...
 └── index/
+    ├── architecture.dot
     ├── manifest.json
     ├── modules.jsonl
     ├── symbols.jsonl
@@ -52,11 +54,18 @@
 └── skills/
     └── code-index/
         └── SKILL.md
+
+.opencode/
+└── skills/
+    └── code-index/
+        └── SKILL.md
 ```
 
 ## 当前实现特点
 
 - 内置在 Claude Code 里，不需要外部工具链
+- `architecture.dot` 是精简的文件级内部依赖图，适合让大模型先快速判断依赖与影响面
+- DOT 只保留文件到文件的内部依赖边；如果要看具体方法依赖，直接看 `skeleton/*.py`
 - TypeScript/TSX/JavaScript/JSX 走启发式结构解析
 - Python 走缩进和函数头解析
 - 其他语言走 generic fallback
@@ -72,6 +81,7 @@
 
 当前仓库已经生成一版：
 
+- `.code_index/index/architecture.dot`
 - `.code_index/index/summary.md`
 - `.code_index/index/manifest.json`
 - `.code_index/skeleton/`

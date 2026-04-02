@@ -2,6 +2,8 @@ import { execFileSync } from 'child_process'
 import { mkdir, readFile, rm, stat, writeFile } from 'fs/promises'
 import { homedir } from 'os'
 import { join, relative, resolve } from 'path'
+import { call as compressStatusCall } from '../compress-status/compress-status.js'
+import { call as compressCall } from '../compress/compress.js'
 import { buildCodeIndex } from '../../indexing/build.js'
 import { parseIndexArgs } from './args.js'
 
@@ -410,6 +412,7 @@ function formatResult(args: {
     `Languages: ${languageSummary || 'none'}`,
     '',
     'Generated:',
+    `- ${join(args.outputDir, 'index', 'architecture.dot')}  (file-level dependency map)`,
     `- ${join(args.outputDir, '__index__.py')}  (entry points, top dirs, hot symbols)`,
     `- ${join(args.outputDir, 'index', 'summary.md')}`,
     `- ${join(args.outputDir, 'index', 'manifest.json')}`,
@@ -638,7 +641,7 @@ export const indexBuiltinCommand = {
   type: 'local' as const,
   name: 'index',
   description:
-    'Build a codebase structure index and Python skeleton under .code_index',
+    'Build a codebase structure index, file dependency DOT, and Python skeleton under .code_index',
   argumentHint: '[path] [--output DIR] [--max-file-bytes N]',
   supportsNonInteractive: true,
   disableModelInvocation: true,
@@ -672,4 +675,36 @@ export const unpinBuiltinCommand = {
   }),
 }
 
-export default [indexBuiltinCommand, pinBuiltinCommand, unpinBuiltinCommand]
+export const compressBuiltinCommand = {
+  type: 'local' as const,
+  name: 'compress',
+  description:
+    'Compress conversation context into structured session state (.py + .json)',
+  argumentHint: '',
+  supportsNonInteractive: true,
+  disableModelInvocation: true,
+  load: async () => ({
+    call: compressCall,
+  }),
+}
+
+export const compressStatusBuiltinCommand = {
+  type: 'local' as const,
+  name: 'compress-status',
+  description:
+    'Show saved context compression stats from .claude/context/session_state.{py,json} and related history/metrics files',
+  argumentHint: '',
+  supportsNonInteractive: true,
+  disableModelInvocation: true,
+  load: async () => ({
+    call: compressStatusCall,
+  }),
+}
+
+export default [
+  indexBuiltinCommand,
+  pinBuiltinCommand,
+  unpinBuiltinCommand,
+  compressBuiltinCommand,
+  compressStatusBuiltinCommand,
+]

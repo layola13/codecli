@@ -2,6 +2,20 @@
 
 # Context 压缩器：完整明细实现方案
 
+## 当前实现状态（2026-04-02）
+
+- 已完成核心链路：
+  - `/compress` 与 `/compress-status` 命令已接入
+  - 每轮对话结束后自动增量持久化 `.claude/context/session_state.py` 与 `.json`
+  - 已额外输出 `.claude/context/session_history.py` 与 `.claude/context/session_metrics.py`
+  - 下一轮 prompt 会动态注入最新的 `session_state.py`
+  - 已补充基础回归测试（engine / runtime / status）
+- 仍有文档与实现未完全对齐的地方：
+  - 文档里部分 Cursor 风格路径/示例与当前实现不一致，当前代码以 `.claude/context/` 为准
+  - 长文档里还有一些更理想化的示例接口，当前实现保持了更轻量的工程化版本
+
+结论：如果按“可用的上下文压缩主流程 + 三个 Python 产物”判断，已经完成；如果按本文档最初的全部示例接口逐项逐字对齐，还不算 100% 完成。
+
 ## 一、问题定义：为什么"对话历史"是 LLM 最大的性能瓶颈
 
 ```

@@ -1,7 +1,7 @@
 import { c as _c } from "react/compiler-runtime";
 import { feature } from 'bun:bundle';
 import figures from 'figures';
-import React, { type ReactNode, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import React, { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { isCoordinatorMode } from 'src/coordinator/coordinatorMode.js';
 import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
 import { useAppState, useSetAppState } from 'src/state/AppState.js';
@@ -31,6 +31,7 @@ import { Box, Text } from '../../ink.js';
 import { useKeybindings } from '../../keybindings/useKeybinding.js';
 import { useShortcutDisplay } from '../../keybindings/useShortcutDisplay.js';
 import { count } from '../../utils/array.js';
+import { useEffectEvent } from '../../utils/useEffectEvent.js';
 import { Byline } from '../design-system/Byline.js';
 import { Dialog } from '../design-system/Dialog.js';
 import { KeyboardShortcutHint } from '../design-system/KeyboardShortcutHint.js';

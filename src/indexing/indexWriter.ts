@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from 'fs/promises'
-import { join, parse as parsePath } from 'path'
+import { join, parse as parsePath, posix } from 'path'
 import type { CodeIndexManifest, EdgeIR, FunctionIR, ModuleIR } from './ir.js'
 import { safePythonIdentifier } from './parserUtils.js'
 
@@ -200,6 +200,263 @@ function renderSummary(args: {
   return lines.join('\n') + '\n'
 }
 
+const JS_LIKE_EXTENSIONS = [
+  '.ts',
+  '.tsx',
+  '.mts',
+  '.cts',
+  '.js',
+  '.jsx',
+  '.mjs',
+  '.cjs',
+] as const
+
+function normalizePathish(value: string): string {
+  const trimmed = value.trim().replaceAll('\\', '/')
+  if (!trimmed) {
+    return ''
+  }
+
+  const withoutDotPrefix = trimmed.startsWith('./')
+    ? trimmed.slice(2)
+    : trimmed
+  return withoutDotPrefix.replace(/\/+$/g, '')
+}
+
+function stripModuleExtension(value: string): string {
+  return value.replace(/\.(?:[cm]?[jt]sx?|py)$/i, '')
+}
+
+function relatedImportExtensions(relativePath: string): readonly string[] {
+  const extension = posix.extname(relativePath).toLowerCase()
+  if (JS_LIKE_EXTENSIONS.includes(extension as (typeof JS_LIKE_EXTENSIONS)[number])) {
+    return JS_LIKE_EXTENSIONS
+  }
+  if (extension === '.py') {
+    return ['.py']
+  }
+  return extension ? [extension] : []
+}
+
+function addModuleAlias(
+  aliasMap: Map<string, string>,
+  alias: string,
+  targetPath: string,
+): void {
+  const normalized = normalizePathish(alias)
+  if (!normalized || aliasMap.has(normalized)) {
+    return
+  }
+  aliasMap.set(normalized, targetPath)
+}
+
+function collectModuleAliases(relativePath: string): string[] {
+  const normalized = normalizePathish(relativePath)
+  const stripped = stripModuleExtension(normalized)
+  const aliases = new Set<string>([normalized, stripped])
+
+  for (const extension of relatedImportExtensions(normalized)) {
+    aliases.add(`${stripped}${extension}`)
+  }
+
+  if (stripped.endsWith('/index')) {
+    const directoryAlias = stripped.slice(0, -'/index'.length)
+    if (directoryAlias) {
+      aliases.add(directoryAlias)
+    }
+  }
+
+  return [...aliases]
+}
+
+function buildModuleAliasMap(modules: readonly ModuleIR[]): Map<string, string> {
+  const aliasMap = new Map<string, string>()
+  const sortedModules = [...modules].sort((left, right) =>
+    left.relativePath.localeCompare(right.relativePath),
+  )
+
+  for (const module of sortedModules) {
+    for (const alias of collectModuleAliases(module.relativePath)) {
+      addModuleAlias(aliasMap, alias, module.relativePath)
+    }
+  }
+
+  return aliasMap
+}
+
+function resolveRelativePathSpecifier(
+  currentRelativePath: string,
+  specifier: string,
+): string | null {
+  const currentDir = posix.dirname(currentRelativePath)
+  const baseDir = currentDir === '.' ? '' : currentDir
+  const resolved = posix.normalize(posix.join(baseDir, specifier))
+  return normalizePathish(resolved)
+}
+
+function resolveRelativePythonSpecifier(
+  currentRelativePath: string,
+  specifier: string,
+): string | null {
+  if (specifier.includes('/')) {
+    return null
+  }
+
+  const match = specifier.match(/^(\.+)(.*)$/)
+  if (!match?.[1]) {
+    return null
+  }
+
+  const currentDir = posix.dirname(currentRelativePath)
+  const currentSegments =
+    currentDir === '.' ? [] : currentDir.split('/').filter(Boolean)
+  const parentSteps = Math.max(0, match[1].length - 1)
+  if (parentSteps > currentSegments.length) {
+    return null
+  }
+
+  const targetSegments = currentSegments.slice(
+    0,
+    currentSegments.length - parentSteps,
+  )
+  const remainder = match[2] ?? ''
+  if (remainder) {
+    targetSegments.push(...remainder.split('.').filter(Boolean))
+  }
+
+  return normalizePathish(targetSegments.join('/'))
+}
+
+function resolveImportToModulePath(args: {
+  aliasMap: ReadonlyMap<string, string>
+  importerPath: string
+  specifier: string
+}): string | null {
+  const normalizedSpecifier = normalizePathish(args.specifier).replace(
+    /^node:/,
+    '',
+  )
+  if (!normalizedSpecifier) {
+    return null
+  }
+
+  const candidates = new Set<string>()
+  const addCandidate = (value: string | null) => {
+    if (!value) {
+      return
+    }
+    const normalized = normalizePathish(value)
+    if (!normalized) {
+      return
+    }
+    candidates.add(normalized)
+    candidates.add(stripModuleExtension(normalized))
+  }
+
+  if (normalizedSpecifier.startsWith('.')) {
+    addCandidate(
+      resolveRelativePathSpecifier(args.importerPath, normalizedSpecifier),
+    )
+    addCandidate(
+      resolveRelativePythonSpecifier(args.importerPath, normalizedSpecifier),
+    )
+  } else {
+    addCandidate(normalizedSpecifier)
+    if (!normalizedSpecifier.includes('/')) {
+      addCandidate(normalizedSpecifier.replaceAll('.', '/'))
+    }
+  }
+
+  for (const candidate of candidates) {
+    const resolved = args.aliasMap.get(candidate)
+    if (resolved) {
+      return resolved
+    }
+  }
+
+  return null
+}
+
+type FileDependencyEdge = {
+  sourcePath: string
+  targetPath: string
+}
+
+function buildFileDependencyEdges(
+  modules: readonly ModuleIR[],
+): FileDependencyEdge[] {
+  const aliasMap = buildModuleAliasMap(modules)
+  const seenEdges = new Set<string>()
+  const edges: FileDependencyEdge[] = []
+
+  for (const module of modules) {
+    for (const imported of module.imports) {
+      const targetPath = resolveImportToModulePath({
+        aliasMap,
+        importerPath: module.relativePath,
+        specifier: imported,
+      })
+      if (!targetPath || targetPath === module.relativePath) {
+        continue
+      }
+
+      const edgeKey = `${module.relativePath}\n${targetPath}`
+      if (seenEdges.has(edgeKey)) {
+        continue
+      }
+
+      seenEdges.add(edgeKey)
+      edges.push({
+        sourcePath: module.relativePath,
+        targetPath,
+      })
+    }
+  }
+
+  return edges.sort((left, right) => {
+    const sourceCompare = left.sourcePath.localeCompare(right.sourcePath)
+    if (sourceCompare !== 0) {
+      return sourceCompare
+    }
+    return left.targetPath.localeCompare(right.targetPath)
+  })
+}
+
+function escapeDotLabel(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, ' ')
+    .replace(/\r/g, '')
+}
+
+function renderArchitectureDot(modules: readonly ModuleIR[]): string {
+  const edges = buildFileDependencyEdges(modules)
+  const nodePaths = [...new Set(edges.flatMap(edge => [edge.sourcePath, edge.targetPath]))]
+    .sort((left, right) => left.localeCompare(right))
+
+  const nodeIds = new Map<string, string>()
+  const lines = ['digraph{']
+
+  for (const [index, nodePath] of nodePaths.entries()) {
+    const nodeId = `n${index.toString(36)}`
+    nodeIds.set(nodePath, nodeId)
+    lines.push(`${nodeId}[label="${escapeDotLabel(nodePath)}"]`)
+  }
+
+  for (const edge of edges) {
+    const sourceId = nodeIds.get(edge.sourcePath)
+    const targetId = nodeIds.get(edge.targetPath)
+    if (!sourceId || !targetId) {
+      continue
+    }
+    lines.push(`${sourceId}->${targetId}`)
+  }
+
+  lines.push('}')
+  return lines.join('\n') + '\n'
+}
+
 export async function writeIndexFiles(args: {
   edges: readonly EdgeIR[]
   modules: readonly ModuleIR[]
@@ -279,6 +536,9 @@ export async function writeIndexFiles(args: {
   }
   await writeFile(join(indexDir, 'symbols.jsonl'), symbolLines.join('\n') + '\n', 'utf8')
 
+  const edgeLines = args.edges.map(edge => JSON.stringify(edge))
+  await writeFile(join(indexDir, 'edges.jsonl'), edgeLines.join('\n') + '\n', 'utf8')
+
   await writeFile(
     join(indexDir, 'summary.md'),
     renderSummary({
@@ -287,6 +547,11 @@ export async function writeIndexFiles(args: {
       modules: args.modules,
       outputDir: args.outputDir,
     }),
+    'utf8',
+  )
+  await writeFile(
+    join(indexDir, 'architecture.dot'),
+    renderArchitectureDot(args.modules),
     'utf8',
   )
 
