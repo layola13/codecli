@@ -4,6 +4,8 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 const binaryPath = resolve(process.argv[2] ?? "dist/claudenative");
+const anthropicBaseUrl = process.env.ANTHROPIC_BASE_URL;
+const printPrompt = process.env.PREVIEW_SMOKE_PROMPT ?? "hello";
 
 if (!existsSync(binaryPath)) {
   console.error(`Preview binary not found: ${binaryPath}`);
@@ -61,6 +63,7 @@ for (const check of checks) {
     stdin: "ignore",
     stdout: "pipe",
     stderr: "pipe",
+    env: process.env,
   });
 
   const stdout = new TextDecoder().decode(proc.stdout);
@@ -89,6 +92,44 @@ for (const check of checks) {
   }
 
   console.log(`[ok] ${check.label}`);
+}
+
+if (anthropicBaseUrl) {
+  const proc = Bun.spawnSync([binaryPath, "--print", printPrompt], {
+    cwd: process.cwd(),
+    stdin: "ignore",
+    stdout: "pipe",
+    stderr: "pipe",
+    env: process.env,
+  });
+
+  const stdout = new TextDecoder().decode(proc.stdout).trim();
+  const stderr = new TextDecoder().decode(proc.stderr).trim();
+
+  if (proc.exitCode !== 0) {
+    console.error(`[fail] print smoke: exit ${proc.exitCode}`);
+    if (stdout) {
+      console.error(stdout);
+    }
+    if (stderr) {
+      console.error(stderr);
+    }
+    process.exit(proc.exitCode || 1);
+  }
+
+  if (!stdout) {
+    console.error("[fail] print smoke: empty stdout");
+    if (stderr) {
+      console.error(stderr);
+    }
+    process.exit(1);
+  }
+
+  console.log(
+    `[ok] print smoke via ANTHROPIC_BASE_URL (${anthropicBaseUrl})`
+  );
+} else {
+  console.log("[skip] print smoke: ANTHROPIC_BASE_URL is not set");
 }
 
 console.log(`[done] preview smoke checks passed for ${binaryPath}`);

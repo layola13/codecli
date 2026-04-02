@@ -163,6 +163,21 @@ bun run compile:bun:preview
 - 会同时开启 `process.env.USER_TYPE === 'ant'` 与原先 `"external" === 'ant'` 对应的 preview 分支
 - 当前实测 `--help` 已包含 `--delegate-permissions`、`task`、`log`、`export`、`rollback`、`up`
 - 不额外切换 Bun `feature()` 宏对应的内部实验能力
+- 运行时 API 地址不做硬编码，直接读取 `ANTHROPIC_BASE_URL`
+
+预览版联机测试建议直接按环境变量传入代理地址：
+
+```bash
+env ANTHROPIC_BASE_URL=http://your-proxy.example ./dist/claudenative --print "hello"
+```
+
+如果要跑预览冒烟脚本，也同样按环境变量传入：
+
+```bash
+env ANTHROPIC_BASE_URL=http://your-proxy.example bun run smoke:preview
+```
+
+`smoke:preview` 在检测到 `ANTHROPIC_BASE_URL` 后，会额外执行一次 `--print "hello"` 联机检查；未设置时只做离线命令可用性检查。
 
 兼容兜底的发布包路径保留为：
 
