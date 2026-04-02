@@ -274,9 +274,7 @@ function NotificationContent({
   const voiceError = feature('VOICE_MODE') ?
   // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
   useVoiceState(s_0 => s_0.voiceError) : null;
-  const isBriefOnly = feature('KAIROS') || feature('KAIROS_BRIEF') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useAppState(s_1 => s_1.isBriefOnly) : false;
+  const isBriefOnly = useAppState(s_1 => s_1.isBriefOnly);
 
   // When voice is actively recording or processing, replace all
   // notifications with just the voice indicator.

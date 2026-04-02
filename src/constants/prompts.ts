@@ -58,6 +58,9 @@ import { SLEEP_TOOL_NAME } from '../tools/SleepTool/prompt.js'
 import { TICK_TAG } from './xml.js'
 import { logForDebugging } from '../utils/debug.js'
 import { loadMemoryPrompt } from '../memdir/memdir.js'
+import { isConciseEnabled } from '../utils/conciseMode.js'
+import { isJudgeModeEnabled } from '../utils/judgeMode.js'
+import { isQuietModeEnabled } from '../utils/quietMode.js'
 import { isUndercover } from '../utils/undercover.js'
 import { isMcpInstructionsDeltaEnabled } from '../utils/mcpInstructionsDelta.js'
 
@@ -73,16 +76,14 @@ const proactiveModule =
   feature('PROACTIVE') || feature('KAIROS')
     ? require('../proactive/index.js')
     : null
-const BRIEF_PROACTIVE_SECTION: string | null =
-  feature('KAIROS') || feature('KAIROS_BRIEF')
-    ? (
-        require('../tools/BriefTool/prompt.js') as typeof import('../tools/BriefTool/prompt.js')
-      ).BRIEF_PROACTIVE_SECTION
-    : null
+const BRIEF_TOOL_NAME = (
+  require('../tools/BriefTool/prompt.js') as typeof import('../tools/BriefTool/prompt.js')
+).BRIEF_TOOL_NAME
+const BRIEF_PROACTIVE_SECTION = (
+  require('../tools/BriefTool/prompt.js') as typeof import('../tools/BriefTool/prompt.js')
+).BRIEF_PROACTIVE_SECTION
 const briefToolModule =
-  feature('KAIROS') || feature('KAIROS_BRIEF')
-    ? (require('../tools/BriefTool/BriefTool.js') as typeof import('../tools/BriefTool/BriefTool.js'))
-    : null
+  require('../tools/BriefTool/BriefTool.js') as typeof import('../tools/BriefTool/BriefTool.js')
 const DISCOVER_SKILLS_TOOL_NAME: string | null = feature(
   'EXPERIMENTAL_SKILL_SEARCH',
 )
@@ -526,7 +527,7 @@ ${CYBER_RISK_INSTRUCTION}`,
     ),
     // Numeric length anchors — research shows ~1.2% output token reduction vs
     // qualitative "be concise". Ant-only to measure quality impact first.
-    ...(process.env.USER_TYPE === 'ant'
+    ...(isConciseEnabled()
       ? [
           systemPromptSection(
             'numeric_length_anchors',
@@ -549,8 +550,14 @@ ${CYBER_RISK_INSTRUCTION}`,
           ),
         ]
       : []),
-    ...(feature('KAIROS') || feature('KAIROS_BRIEF')
+    ...(briefToolModule.isBriefEnabled()
       ? [systemPromptSection('brief', () => getBriefSection())]
+      : []),
+    ...(isQuietModeEnabled()
+      ? [systemPromptSection('quiet_mode', () => getQuietModeSection())]
+      : []),
+    ...(isJudgeModeEnabled()
+      ? [systemPromptSection('judge_mode', () => getJudgeModeSection())]
       : []),
   ]
 
@@ -841,7 +848,6 @@ Old tool results will be automatically cleared from context to free up space. Th
 const SUMMARIZE_TOOL_RESULTS_SECTION = `When working with tool results, write down any important information you might need later in your response, as the original tool result may be cleared later.`
 
 function getBriefSection(): string | null {
-  if (!(feature('KAIROS') || feature('KAIROS_BRIEF'))) return null
   if (!BRIEF_PROACTIVE_SECTION) return null
   // Whenever the tool is available, the model is told to use it. The
   // /brief toggle and --brief flag now only control the isBriefOnly
@@ -855,6 +861,38 @@ function getBriefSection(): string | null {
   )
     return null
   return BRIEF_PROACTIVE_SECTION
+}
+
+function getQuietModeSection(): string | null {
+  if (!isQuietModeEnabled()) return null
+
+  return `# Quiet mode
+
+Minimize user-facing chatter while you work.
+
+- Do not send acknowledgements, phase updates, checkpoint summaries, or "still working" messages.
+- Do not narrate progress like "phase 1 done", "I checked X", "now moving to Y", or similar incremental updates.
+- Work silently with tools until one of these is true:
+  1. You are blocked and need new information from the user.
+  2. You need confirmation for a risky or irreversible action.
+  3. You have completed a meaningful result and are ready to report it.
+- If ${BRIEF_TOOL_NAME} is available, do not use it for interim progress updates. Reserve it for blockers, required confirmations, or the final completion summary.
+- If the task is long, batch your work and report once at the end rather than narrating intermediate milestones.`
+}
+
+function getJudgeModeSection(): string | null {
+  if (!isJudgeModeEnabled()) return null
+
+  return `# Judge mode
+
+Before you report a task complete, you must get an independent verification verdict.
+
+- Spawn the ${AGENT_TOOL_NAME} tool with subagent_type="${VERIFICATION_AGENT_TYPE}" before any final completion report.
+- Pass the original user task, the files changed, and the approach taken.
+- If the verifier returns FAIL, or reveals missing work, you must continue fixing the task and verify again.
+- Do not present the task as complete until the verifier returns VERDICT: PASS, unless you are genuinely blocked by missing tools, missing environment, or missing user input.
+- If the verifier returns PARTIAL because of environmental limits, explain exactly what was verified, what could not be verified, and why.
+- If quiet mode is also enabled, stay silent during the implement → verify → fix loop and only report once you have a final verified result or a real blocker.`
 }
 
 function getProactiveSection(): string | null {

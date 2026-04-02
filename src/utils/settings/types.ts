@@ -919,16 +919,12 @@ export const SettingsSchema = lazySchema(() =>
             'plugins may push inbound messages. Undefined falls back to the default. ' +
             'Requires channelsEnabled: true.',
         ),
-      ...(feature('KAIROS') || feature('KAIROS_BRIEF')
-        ? {
-            defaultView: z
-              .enum(['chat', 'transcript'])
-              .optional()
-              .describe(
-                'Default transcript view: chat (SendUserMessage checkpoints only) or transcript (full)',
-              ),
-          }
-        : {}),
+      defaultView: z
+        .enum(['chat', 'transcript'])
+        .optional()
+        .describe(
+          'Default transcript view: chat (SendUserMessage checkpoints only) or transcript (full)',
+        ),
       prefersReducedMotion: z
         .boolean()
         .optional()

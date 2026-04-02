@@ -84,10 +84,13 @@ import { isAnalyticsDisabled } from 'src/services/analytics/config.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import { initializeAnalyticsGates } from 'src/services/analytics/sink.js';
-import { getOriginalCwd, setAdditionalDirectoriesForClaudeMd, setIsRemoteMode, setMainLoopModelOverride, setMainThreadAgentType, setTeleportedSessionInfo } from './bootstrap/state.js';
+import { getConciseModeOptIn, getOriginalCwd, getUserMsgOptIn, setAdditionalDirectoriesForClaudeMd, setConciseModeOptIn, setIsRemoteMode, setJudgeModeOptIn, setMainLoopModelOverride, setMainThreadAgentType, setQuietModeOptIn, setTeleportedSessionInfo, setUserMsgOptIn } from './bootstrap/state.js';
 import { filterCommandsForRemoteMode, getCommands } from './commands.js';
 import type { StatsStore } from './context/stats.js';
 import { launchAssistantInstallWizard, launchAssistantSessionChooser, launchInvalidSettingsDialog, launchResumeChooser, launchSnapshotUpdateDialog, launchTeleportRepoMismatchDialog, launchTeleportResumeWrapper } from './dialogLaunchers.js';
+import { isBriefEnabled, isBriefEntitled } from './utils/briefMode.js';
+import { isJudgeModeEnabled } from './utils/judgeMode.js';
+import { isQuietModeEnabled } from './utils/quietMode.js';
 import { SHOW_CURSOR } from './ink/termio/dec.js';
 import { exitWithError, exitWithMessage, getRenderContext, renderAndRun, showSetupScreens } from './interactiveHelpers.js';
 import { initBuiltinPlugins } from './plugins/bundled/index.js';
@@ -1725,7 +1728,7 @@ async function run(): Promise<CommanderCommand> {
     // the tool as enabled when computing the base-tools disallow filter.
     // Conditional require avoids leaking the tool-name string into
     // external builds.
-    if ((feature('KAIROS') || feature('KAIROS_BRIEF')) && baseTools.length > 0) {
+    if (baseTools.length > 0) {
       /* eslint-disable @typescript-eslint/no-require-imports */
       const {
         BRIEF_TOOL_NAME,
@@ -2172,6 +2175,9 @@ async function run(): Promise<CommanderCommand> {
       }
     }
     maybeActivateBrief(options);
+    maybeActivateConcise(options);
+    maybeActivateQuiet(options);
+    maybeActivateJudge(options);
     // defaultView: 'chat' is a persisted opt-in — check entitlement and set
     // userMsgOptIn so the tool + prompt section activate. Interactive-only:
     // defaultView is a display preference; SDK sessions have no display, and
@@ -2181,12 +2187,7 @@ async function run(): Promise<CommanderCommand> {
     // BEFORE any isBriefEnabled() read below (proactive prompt's
     // briefVisibility). A persisted 'chat' after a GB kill-switch falls
     // through (entitlement fails).
-    if ((feature('KAIROS') || feature('KAIROS_BRIEF')) && !getIsNonInteractiveSession() && !getUserMsgOptIn() && getInitialSettings().defaultView === 'chat') {
-      /* eslint-disable @typescript-eslint/no-require-imports */
-      const {
-        isBriefEntitled
-      } = require('./tools/BriefTool/BriefTool.js') as typeof import('./tools/BriefTool/BriefTool.js');
-      /* eslint-enable @typescript-eslint/no-require-imports */
+    if (!getIsNonInteractiveSession() && !getUserMsgOptIn() && getInitialSettings().defaultView === 'chat') {
       if (isBriefEntitled()) {
         setUserMsgOptIn(true);
       }
@@ -2197,9 +2198,7 @@ async function run(): Promise<CommanderCommand> {
     if ((feature('PROACTIVE') || feature('KAIROS')) && ((options as {
       proactive?: boolean;
     }).proactive || isEnvTruthy(process.env.CLAUDE_CODE_PROACTIVE)) && !coordinatorModeModule?.isCoordinatorMode()) {
-      /* eslint-disable @typescript-eslint/no-require-imports */
-      const briefVisibility = feature('KAIROS') || feature('KAIROS_BRIEF') ? (require('./tools/BriefTool/BriefTool.js') as typeof import('./tools/BriefTool/BriefTool.js')).isBriefEnabled() ? 'Call SendUserMessage at checkpoints to mark where things stand.' : 'The user will see any text you output.' : 'The user will see any text you output.';
-      /* eslint-enable @typescript-eslint/no-require-imports */
+      const briefVisibility = isBriefEnabled() ? 'Call SendUserMessage at checkpoints to mark where things stand.' : 'The user will see any text you output.';
       const proactivePrompt = `\n# Proactive Mode\n\nYou are in proactive mode. Take initiative — explore, act, and make progress without waiting for instructions.\n\nStart by briefly greeting the user.\n\nYou will receive periodic <tick> prompts. These are check-ins. Do whatever seems most useful, or call Sleep if there's nothing to do. ${briefVisibility}`;
       appendSystemPrompt = appendSystemPrompt ? `${appendSystemPrompt}\n\n${proactivePrompt}` : proactivePrompt;
     }
@@ -2912,7 +2911,7 @@ async function run(): Promise<CommanderCommand> {
     };
     // All startup opt-in paths (--tools, --brief, defaultView) have fired
     // above; initialIsBriefOnly just reads the resulting state.
-    const initialIsBriefOnly = feature('KAIROS') || feature('KAIROS_BRIEF') ? getUserMsgOptIn() : false;
+    const initialIsBriefOnly = getUserMsgOptIn();
     const fullRemoteControl = remoteControl || getRemoteControlAtStartup() || kairosEnabled;
     let ccrMirrorEnabled = false;
     if (feature('CCR_MIRROR') && !fullRemoteControl) {
@@ -3126,6 +3125,9 @@ async function run(): Promise<CommanderCommand> {
         }
         maybeActivateProactive(options);
         maybeActivateBrief(options);
+        maybeActivateConcise(options);
+        maybeActivateQuiet(options);
+        maybeActivateJudge(options);
         logEvent('tengu_continue', {
           success: true,
           resume_duration_ms: Math.round(performance.now() - resumeStart)
@@ -3730,6 +3732,9 @@ async function run(): Promise<CommanderCommand> {
       if (resumeData) {
         maybeActivateProactive(options);
         maybeActivateBrief(options);
+        maybeActivateConcise(options);
+        maybeActivateQuiet(options);
+        maybeActivateJudge(options);
         await launchRepl(root, {
           getFpsMetrics,
           stats,
@@ -3766,6 +3771,9 @@ async function run(): Promise<CommanderCommand> {
       profileCheckpoint('action_after_hooks');
       maybeActivateProactive(options);
       maybeActivateBrief(options);
+      maybeActivateConcise(options);
+      maybeActivateQuiet(options);
+      maybeActivateJudge(options);
       // Persist the current mode for fresh sessions so future resumes know what mode was used
       if (feature('COORDINATOR_MODE')) {
         saveMode(coordinatorModeModule?.isCoordinatorMode() ? 'coordinator' : 'normal');
@@ -3835,9 +3843,10 @@ async function run(): Promise<CommanderCommand> {
   if (feature('UDS_INBOX')) {
     program.addOption(new Option('--messaging-socket-path <path>', 'Unix domain socket path for the UDS messaging server (defaults to a tmp path)'));
   }
-  if (feature('KAIROS') || feature('KAIROS_BRIEF')) {
-    program.addOption(new Option('--brief', 'Enable SendUserMessage tool for agent-to-user communication'));
-  }
+  program.addOption(new Option('--brief', 'Enable SendUserMessage tool for agent-to-user communication'));
+  program.addOption(new Option('--concise', 'Enable concise output mode'));
+  program.addOption(new Option('--quiet', 'Suppress intermediate progress updates until blocked or done'));
+  program.addOption(new Option('--judge', 'Require an independent verification pass before reporting completion'));
   if (feature('KAIROS')) {
     program.addOption(new Option('--assistant', 'Force assistant mode (Agent SDK daemon use)').hideHelp());
   }
@@ -4620,7 +4629,6 @@ function maybeActivateProactive(options: unknown): void {
   }
 }
 function maybeActivateBrief(options: unknown): void {
-  if (!(feature('KAIROS') || feature('KAIROS_BRIEF'))) return;
   const briefFlag = (options as {
     brief?: boolean;
   }).brief;
@@ -4648,6 +4656,48 @@ function maybeActivateBrief(options: unknown): void {
     enabled: entitled,
     gated: !entitled,
     source: (briefEnv ? 'env' : 'flag') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
+  });
+}
+function maybeActivateConcise(options: unknown): void {
+  const conciseFlag = (options as {
+    concise?: boolean;
+  }).concise;
+  const conciseEnv = isEnvTruthy(process.env.CLAUDE_CODE_CONCISE);
+  if (!conciseFlag && !conciseEnv) return;
+  if (!getConciseModeOptIn()) {
+    setConciseModeOptIn(true);
+  }
+  logEvent('tengu_concise_mode_enabled', {
+    enabled: true,
+    source: (conciseEnv ? 'env' : 'flag') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
+  });
+}
+function maybeActivateQuiet(options: unknown): void {
+  const quietFlag = (options as {
+    quiet?: boolean;
+  }).quiet;
+  const quietEnv = isEnvTruthy(process.env.CLAUDE_CODE_QUIET);
+  if (!quietFlag && !quietEnv) return;
+  if (!isQuietModeEnabled()) {
+    setQuietModeOptIn(true);
+  }
+  logEvent('tengu_quiet_mode_enabled', {
+    enabled: true,
+    source: (quietEnv ? 'env' : 'flag') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
+  });
+}
+function maybeActivateJudge(options: unknown): void {
+  const judgeFlag = (options as {
+    judge?: boolean;
+  }).judge;
+  const judgeEnv = isEnvTruthy(process.env.CLAUDE_CODE_JUDGE);
+  if (!judgeFlag && !judgeEnv) return;
+  if (!isJudgeModeEnabled()) {
+    setJudgeModeOptIn(true);
+  }
+  logEvent('tengu_judge_mode_enabled', {
+    enabled: true,
+    source: (judgeEnv ? 'env' : 'flag') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
   });
 }
 function resetCursor() {

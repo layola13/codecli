@@ -42,9 +42,7 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       'ctrl+l': 'app:redraw',
       'ctrl+t': 'app:toggleTodos',
       'ctrl+o': 'app:toggleTranscript',
-      ...(feature('KAIROS') || feature('KAIROS_BRIEF')
-        ? { 'ctrl+shift+b': 'app:toggleBrief' as const }
-        : {}),
+      'ctrl+shift+b': 'app:toggleBrief',
       'ctrl+shift+o': 'app:toggleTeammatePreview',
       'ctrl+r': 'history:search',
       // File navigation. cmd+ bindings only fire on kitty-protocol terminals;

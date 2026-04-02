@@ -37,6 +37,7 @@ import { SearchBox } from '../SearchBox.js';
 import { isSupportedTerminal, hasAccessToIDEExtensionDiffFeature } from '../../utils/ide.js';
 import { getInitialSettings, getSettingsForSource, updateSettingsForSource } from '../../utils/settings/settings.js';
 import { getUserMsgOptIn, setUserMsgOptIn } from '../../bootstrap/state.js';
+import { clearSystemPromptSections } from '../../constants/systemPromptSections.js';
 import { DEFAULT_OUTPUT_STYLE_NAME } from 'src/constants/outputStyles.js';
 import { isEnvTruthy, isRunningOnHomespace } from 'src/utils/envUtils.js';
 import type { LocalJSXCommandContext, CommandResultDisplay } from '../../commands.js';
@@ -48,6 +49,7 @@ import { useSearchInput } from '../../hooks/useSearchInput.js';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { clearFastModeCooldown, FAST_MODE_MODEL_DISPLAY, isFastModeAvailable, isFastModeEnabled, getFastModeModel, isFastModeSupportedByModel } from '../../utils/fastMode.js';
 import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js';
+import { isBriefEntitled } from '../../utils/briefMode.js';
 type Props = {
   onClose: (result?: string, options?: {
     display?: CommandResultDisplay;
@@ -130,9 +132,7 @@ export function Config({
   // gate) even if they haven't opted in this session — it IS the persistent
   // opt-in. 'chat' written here is read at next startup by main.tsx which
   // sets userMsgOptIn if still entitled.
-  /* eslint-disable @typescript-eslint/no-require-imports */
-  const showDefaultViewPicker = feature('KAIROS') || feature('KAIROS_BRIEF') ? (require('../../tools/BriefTool/BriefTool.js') as typeof import('../../tools/BriefTool/BriefTool.js')).isBriefEntitled() : false;
-  /* eslint-enable @typescript-eslint/no-require-imports */
+  const showDefaultViewPicker = isBriefEntitled();
   const setAppState = useSetAppState();
   const [changes, setChanges] = useState<{
     [key: string]: unknown;
@@ -751,6 +751,7 @@ export function Config({
       // is better than leaving the tool on after switching away.
       // Reverted on Escape via initialUserMsgOptIn snapshot.
       setUserMsgOptIn(nextBrief);
+      clearSystemPromptSections();
       setChanges(prev_19 => ({
         ...prev_19,
         'Default view': selected
@@ -1246,6 +1247,7 @@ export function Config({
     // exists when showDefaultViewPicker is true).
     if (getUserMsgOptIn() !== initialUserMsgOptIn) {
       setUserMsgOptIn(initialUserMsgOptIn);
+      clearSystemPromptSections();
     }
   }, [themeSetting, setTheme, initialLocalSettings, initialUserSettings, initialAppState, initialUserMsgOptIn, setAppState]);
 

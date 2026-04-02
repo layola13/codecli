@@ -67,10 +67,10 @@ const proactive =
   feature('PROACTIVE') || feature('KAIROS')
     ? require('./commands/proactive.js').default
     : null
-const briefCommand =
-  feature('KAIROS') || feature('KAIROS_BRIEF')
-    ? require('./commands/brief.js').default
-    : null
+const briefCommand = require('./commands/brief.js').default
+const conciseCommand = require('./commands/concise.js').default
+const quietCommand = require('./commands/quiet.js').default
+const judgeCommand = require('./commands/judge.js').default
 const assistantCommand = feature('KAIROS')
   ? require('./commands/assistant/index.js').default
   : null
@@ -331,6 +331,9 @@ const COMMANDS = memoize((): Command[] => [
   ...(buddy ? [buddy] : []),
   ...(proactive ? [proactive] : []),
   ...(briefCommand ? [briefCommand] : []),
+  ...(conciseCommand ? [conciseCommand] : []),
+  ...(quietCommand ? [quietCommand] : []),
+  ...(judgeCommand ? [judgeCommand] : []),
   ...(assistantCommand ? [assistantCommand] : []),
   ...(bridge ? [bridge] : []),
   ...(remoteControlServerCommand ? [remoteControlServerCommand] : []),

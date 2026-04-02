@@ -77,6 +77,9 @@ type State = {
   strictToolResultPairing: boolean
   sdkAgentProgressSummariesEnabled: boolean
   userMsgOptIn: boolean
+  conciseModeOptIn: boolean
+  quietModeOptIn: boolean
+  judgeModeOptIn: boolean
   clientType: string
   sessionSource: string | undefined
   questionPreviewFormat: 'markdown' | 'html' | undefined
@@ -302,6 +305,9 @@ function getInitialState(): State {
     strictToolResultPairing: false,
     sdkAgentProgressSummariesEnabled: false,
     userMsgOptIn: false,
+    conciseModeOptIn: false,
+    quietModeOptIn: false,
+    judgeModeOptIn: false,
     clientType: 'cli',
     sessionSource: undefined,
     questionPreviewFormat: undefined,
@@ -1109,6 +1115,30 @@ export function setUserMsgOptIn(value: boolean): void {
   STATE.userMsgOptIn = value
 }
 
+export function getConciseModeOptIn(): boolean {
+  return STATE.conciseModeOptIn
+}
+
+export function setConciseModeOptIn(value: boolean): void {
+  STATE.conciseModeOptIn = value
+}
+
+export function getQuietModeOptIn(): boolean {
+  return STATE.quietModeOptIn
+}
+
+export function setQuietModeOptIn(value: boolean): void {
+  STATE.quietModeOptIn = value
+}
+
+export function getJudgeModeOptIn(): boolean {
+  return STATE.judgeModeOptIn
+}
+
+export function setJudgeModeOptIn(value: boolean): void {
+  STATE.judgeModeOptIn = value
+}
+
 export function getSessionSource(): string | undefined {
   return STATE.sessionSource
 }
@@ -1755,4 +1785,3 @@ export function getPromptId(): string | null {
 export function setPromptId(id: string | null): void {
   STATE.promptId = id
 }
-

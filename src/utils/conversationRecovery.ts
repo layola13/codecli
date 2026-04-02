@@ -52,18 +52,12 @@ import type { ContentReplacementRecord } from './toolResultStorage.js'
 // Dead code elimination: ant-only tool names are conditionally required so
 // their strings don't leak into external builds. Static imports always bundle.
 /* eslint-disable @typescript-eslint/no-require-imports */
-const BRIEF_TOOL_NAME: string | null =
-  feature('KAIROS') || feature('KAIROS_BRIEF')
-    ? (
-        require('../tools/BriefTool/prompt.js') as typeof import('../tools/BriefTool/prompt.js')
-      ).BRIEF_TOOL_NAME
-    : null
-const LEGACY_BRIEF_TOOL_NAME: string | null =
-  feature('KAIROS') || feature('KAIROS_BRIEF')
-    ? (
-        require('../tools/BriefTool/prompt.js') as typeof import('../tools/BriefTool/prompt.js')
-      ).LEGACY_BRIEF_TOOL_NAME
-    : null
+const BRIEF_TOOL_NAME: string | null = (
+  require('../tools/BriefTool/prompt.js') as typeof import('../tools/BriefTool/prompt.js')
+).BRIEF_TOOL_NAME
+const LEGACY_BRIEF_TOOL_NAME: string | null = (
+  require('../tools/BriefTool/prompt.js') as typeof import('../tools/BriefTool/prompt.js')
+).LEGACY_BRIEF_TOOL_NAME
 const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS')
   ? (
       require('../tools/SendUserFileTool/prompt.js') as typeof import('../tools/SendUserFileTool/prompt.js')

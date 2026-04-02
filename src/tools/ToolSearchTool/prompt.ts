@@ -4,14 +4,10 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/gr
 import type { Tool } from '../../Tool.js'
 import { AGENT_TOOL_NAME } from '../AgentTool/constants.js'
 
-// Dead code elimination: Brief tool name only needed when KAIROS or KAIROS_BRIEF is on
 /* eslint-disable @typescript-eslint/no-require-imports */
-const BRIEF_TOOL_NAME: string | null =
-  feature('KAIROS') || feature('KAIROS_BRIEF')
-    ? (
-        require('../BriefTool/prompt.js') as typeof import('../BriefTool/prompt.js')
-      ).BRIEF_TOOL_NAME
-    : null
+const BRIEF_TOOL_NAME: string | null = (
+  require('../BriefTool/prompt.js') as typeof import('../BriefTool/prompt.js')
+).BRIEF_TOOL_NAME
 const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS')
   ? (
       require('../SendUserFileTool/prompt.js') as typeof import('../SendUserFileTool/prompt.js')
@@ -85,11 +81,7 @@ export function isDeferredTool(tool: Tool): boolean {
   // see without a ToolSearch round-trip. No runtime gate needed here: this
   // tool's isEnabled() IS isBriefEnabled(), so being asked about its deferral
   // status implies the gate already passed.
-  if (
-    (feature('KAIROS') || feature('KAIROS_BRIEF')) &&
-    BRIEF_TOOL_NAME &&
-    tool.name === BRIEF_TOOL_NAME
-  ) {
+  if (BRIEF_TOOL_NAME && tool.name === BRIEF_TOOL_NAME) {
     return false
   }
 

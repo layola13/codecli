@@ -20,6 +20,13 @@ npm install -g @anthropic-ai/claude-code
 
 2. Navigate to your project directory and run `claude`.
 
+## Local toggles
+
+- `--brief` or `CLAUDE_CODE_BRIEF=1`: enable Brief mode. In interactive sessions, `/brief` toggles the brief-only chat view and enables `SendUserMessage` as the primary user-facing output channel.
+- `--concise` or `CLAUDE_CODE_CONCISE=1`: enable Concise mode. In interactive sessions, `/concise` toggles the extra-short output style and enables numeric length anchors in the system prompt.
+- `--quiet` or `CLAUDE_CODE_QUIET=1`: enable Quiet mode. In interactive sessions, `/quiet` tells the model not to send phase-by-phase progress updates and to stay silent unless blocked, risky confirmation is required, or the task is finished.
+- `--judge` or `CLAUDE_CODE_JUDGE=1`: enable Judge mode. In interactive sessions, `/judge` requires an independent verification pass before the model reports a task complete.
+
 ## Reporting Bugs
 
 We welcome your feedback. Use the `/bug` command to report issues directly within Claude Code, or file a [GitHub issue](https://github.com/anthropics/claude-code/issues).
