@@ -24,7 +24,7 @@ import { formatDuration } from '../../utils/format.js';
 import { setEnvHookNotifier } from '../../utils/hooks/fileChangedWatcher.js';
 import { toIDEDisplayName } from '../../utils/ide.js';
 import { getMessagesAfterCompactBoundary } from '../../utils/messages.js';
-import { tokenCountFromLastAPIResponse, calculateSessionStats } from '../../utils/tokens.js';
+import { tokenCountFromLastAPIResponse, tokenCountWithEstimation } from '../../utils/tokens.js';
 import { useSettings } from '../../hooks/useSettings.js';
 import { AutoUpdaterWrapper } from '../AutoUpdaterWrapper.js';
 import { ConfigurableShortcutHint } from '../ConfigurableShortcutHint.js';
@@ -85,14 +85,14 @@ export function Notifications(t0) {
   const showInputStats = settings?.showInputStats ?? true;
   let t_stats;
   if ($[2] !== messages || $[3] !== showInputStats) {
-    t_stats = showInputStats ? calculateSessionStats(messages) : null;
+    t_stats = showInputStats ? tokenCountWithEstimation(messages) : 0;
     $[2] = messages;
     $[3] = showInputStats;
     $[4] = t_stats;
   } else {
     t_stats = $[4];
   }
-  const sessionStats = t_stats;
+  const currentContextTokens = t_stats;
   const mainLoopModel = useMainLoopModel();
   let t4;
   if ($[5] !== mainLoopModel || $[6] !== tokenUsage) {
@@ -188,8 +188,8 @@ export function Notifications(t0) {
   const t11 = isNarrow ? "flex-start" : "flex-end";
   const t12 = isInOverageMode ?? false;
   let t13;
-  if ($[18] !== apiKeyStatus || $[19] !== autoUpdaterResult || $[20] !== debug || $[21] !== ideSelection || $[22] !== isAutoUpdating || $[23] !== isShowingCompactMessage || $[24] !== mainLoopModel || $[25] !== mcpClients || $[26] !== notifications || $[27] !== onAutoUpdaterResult || $[28] !== onChangeIsUpdating || $[29] !== shouldShowAutoUpdater || $[30] !== t12 || $[31] !== tokenUsage || $[32] !== verbose || $[33] !== sessionStats) {
-    t13 = <NotificationContent ideSelection={ideSelection} mcpClients={mcpClients} notifications={notifications} isInOverageMode={t12} isTeamOrEnterprise={isTeamOrEnterprise} apiKeyStatus={apiKeyStatus} debug={debug} verbose={verbose} tokenUsage={tokenUsage} mainLoopModel={mainLoopModel} shouldShowAutoUpdater={shouldShowAutoUpdater} autoUpdaterResult={autoUpdaterResult} isAutoUpdating={isAutoUpdating} isShowingCompactMessage={isShowingCompactMessage} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={onChangeIsUpdating} sessionStats={sessionStats} />;
+  if ($[18] !== apiKeyStatus || $[19] !== autoUpdaterResult || $[20] !== debug || $[21] !== ideSelection || $[22] !== isAutoUpdating || $[23] !== isShowingCompactMessage || $[24] !== mainLoopModel || $[25] !== mcpClients || $[26] !== notifications || $[27] !== onAutoUpdaterResult || $[28] !== onChangeIsUpdating || $[29] !== shouldShowAutoUpdater || $[30] !== t12 || $[31] !== tokenUsage || $[32] !== verbose || $[33] !== currentContextTokens) {
+    t13 = <NotificationContent ideSelection={ideSelection} mcpClients={mcpClients} notifications={notifications} isInOverageMode={t12} isTeamOrEnterprise={isTeamOrEnterprise} apiKeyStatus={apiKeyStatus} debug={debug} verbose={verbose} tokenUsage={tokenUsage} mainLoopModel={mainLoopModel} shouldShowAutoUpdater={shouldShowAutoUpdater} autoUpdaterResult={autoUpdaterResult} isAutoUpdating={isAutoUpdating} isShowingCompactMessage={isShowingCompactMessage} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={onChangeIsUpdating} currentContextTokens={currentContextTokens} messageCount={messages.length} />;
     $[18] = apiKeyStatus;
     $[19] = autoUpdaterResult;
     $[20] = debug;
@@ -205,7 +205,7 @@ export function Notifications(t0) {
     $[30] = t12;
     $[31] = tokenUsage;
     $[32] = verbose;
-    $[33] = sessionStats;
+    $[33] = currentContextTokens;
     $[34] = t13;
   } else {
     t13 = $[34];
@@ -244,7 +244,8 @@ function NotificationContent({
   isShowingCompactMessage,
   onAutoUpdaterResult,
   onChangeIsUpdating,
-  sessionStats
+  currentContextTokens,
+  messageCount
 }: {
   ideSelection: IDESelection | undefined;
   mcpClients?: MCPServerConnection[];
@@ -265,7 +266,8 @@ function NotificationContent({
   isShowingCompactMessage: boolean;
   onAutoUpdaterResult: (result: AutoUpdaterResult) => void;
   onChangeIsUpdating: (isUpdating: boolean) => void;
-  sessionStats: { messageCount: number; totalTokens: number; totalRequests: number } | null;
+  currentContextTokens: number;
+  messageCount: number;
 }): ReactNode {
   // Poll apiKeyHelper inflight state to show slow-helper notice.
   // Gated on configuration — most users never set apiKeyHelper, so the
@@ -339,14 +341,14 @@ function NotificationContent({
                 {voiceError}
               </Text>
             </Box> : null}
-      {sessionStats && sessionStats.messageCount > 0 && <Box>
+      {currentContextTokens > 0 && <Box>
           <Text dimColor wrap="truncate">
             {(() => {
               const totalContext = mainLoopModel.includes('1M') ? 1_000_000 : 200_000;
-              const pct = Math.round((sessionStats.totalTokens / totalContext) * 100);
-              const usageStr = sessionStats.totalTokens > 1000 ? `${(sessionStats.totalTokens / 1000).toFixed(1)}k` : `${sessionStats.totalTokens}`;
+              const pct = Math.round((currentContextTokens / totalContext) * 100);
+              const usageStr = currentContextTokens > 1000 ? `${(currentContextTokens / 1000).toFixed(1)}k` : `${currentContextTokens}`;
               const totalStr = totalContext >= 1_000_000 ? '1M' : '200k';
-              return `${sessionStats.messageCount} msgs · ${usageStr}/${totalStr} ${pct}% · ${sessionStats.totalRequests} reqs`;
+              return `${messageCount} msgs · ${usageStr}/${totalStr} ${pct}%`;
             })()}
           </Text>
         </Box>}

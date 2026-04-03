@@ -28,6 +28,31 @@ import { clearMemoryFileCaches } from './utils/claudemd.js'
 import { getCurrentProjectConfig, getGlobalConfig } from './utils/config.js'
 import { logForDiagnosticsNoPII } from './utils/diagLogs.js'
 import { env } from './utils/env.js'
+
+// DSP (dangerously-skip-permissions) warning state for interactive confirmation
+let _pendingDspWarning: {
+  isDocker: boolean
+  isBubblewrap: boolean
+  isSandbox: boolean
+  hasInternet: boolean
+} | null = null
+
+export function getPendingDspWarning() {
+  return _pendingDspWarning
+}
+
+export function clearPendingDspWarning() {
+  _pendingDspWarning = null
+}
+
+export function setPendingDspWarning(info: {
+  isDocker: boolean
+  isBubblewrap: boolean
+  isSandbox: boolean
+  hasInternet: boolean
+}) {
+  _pendingDspWarning = info
+}
 import { envDynamic } from './utils/envDynamic.js'
 import { isBareMode, isEnvTruthy } from './utils/envUtils.js'
 import { errorMessage } from './utils/errors.js'
@@ -432,11 +457,8 @@ export async function setup(
       const isSandbox = process.env.IS_SANDBOX === '1'
       const isSandboxed = isDocker || isBubblewrap || isSandbox
       if (!isSandboxed || hasInternet) {
-        // biome-ignore lint/suspicious/noConsole:: intentional console output
-        console.error(
-          `--dangerously-skip-permissions can only be used in Docker/sandbox containers with no internet access but got Docker: ${isDocker}, Bubblewrap: ${isBubblewrap}, IS_SANDBOX: ${isSandbox}, hasInternet: ${hasInternet}`,
-        )
-        process.exit(1)
+        // Store warning info for interactive confirmation instead of exiting
+        setPendingDspWarning({ isDocker, isBubblewrap, isSandbox, hasInternet })
       }
     }
   }

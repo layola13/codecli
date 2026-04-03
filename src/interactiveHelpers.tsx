@@ -29,6 +29,8 @@ import type { PermissionMode } from './utils/permissions/PermissionMode.js';
 import { getBaseRenderOptions } from './utils/renderOptions.js';
 import { getSettingsWithAllErrors } from './utils/settings/allErrors.js';
 import { hasAutoModeOptIn, hasSkipDangerousModePermissionPrompt } from './utils/settings/settings.js';
+import { getPendingDspWarning, clearPendingDspWarning } from './setup.js';
+import { setSessionBypassPermissionsMode } from './bootstrap/state.js';
 export function completeOnboarding(): void {
   saveGlobalConfig(current => ({
     ...current,
@@ -167,6 +169,36 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
         ClaudeMdExternalIncludesDialog
       } = await import('./components/ClaudeMdExternalIncludesDialog.js');
       await showSetupDialog(root, done => <ClaudeMdExternalIncludesDialog onDone={done} isStandaloneDialog externalIncludes={externalIncludes} />);
+    }
+
+    // DSP warning: if --dangerously-skip-permissions was used but the environment
+    // check failed, show an interactive warning dialog instead of exiting.
+    const dspWarning = getPendingDspWarning();
+    if (dspWarning) {
+      await new Promise<void>((resolve, reject) => {
+        const { DspWarningDialog } = require('./components/DspWarningDialog/DspWarningDialog.js');
+        showSetupDialog(root, done => (
+          <DspWarningDialog
+            onDone={() => {
+              clearPendingDspWarning();
+              setSessionBypassPermissionsMode(true);
+              done();
+              resolve();
+            }}
+            onCancel={() => {
+              clearPendingDspWarning();
+              reject(new Error('DSP warning cancelled'));
+            }}
+            isDocker={dspWarning.isDocker}
+            isBubblewrap={dspWarning.isBubblewrap}
+            isSandbox={dspWarning.isSandbox}
+            hasInternet={dspWarning.hasInternet}
+          />
+        ));
+      }).catch(() => {
+        // User chose to exit
+        gracefulShutdownSync(1);
+      });
     }
   }
 
