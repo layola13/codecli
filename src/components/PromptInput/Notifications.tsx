@@ -24,7 +24,8 @@ import { formatDuration } from '../../utils/format.js';
 import { setEnvHookNotifier } from '../../utils/hooks/fileChangedWatcher.js';
 import { toIDEDisplayName } from '../../utils/ide.js';
 import { getMessagesAfterCompactBoundary } from '../../utils/messages.js';
-import { tokenCountFromLastAPIResponse } from '../../utils/tokens.js';
+import { tokenCountFromLastAPIResponse, calculateSessionStats } from '../../utils/tokens.js';
+import { useSettings } from '../../hooks/useSettings.js';
 import { AutoUpdaterWrapper } from '../AutoUpdaterWrapper.js';
 import { ConfigurableShortcutHint } from '../ConfigurableShortcutHint.js';
 import { IdeStatusIndicator } from '../IdeStatusIndicator.js';
@@ -53,7 +54,7 @@ type Props = {
   isNarrow?: boolean;
 };
 export function Notifications(t0) {
-  const $ = _c(34);
+  const $ = _c(40);
   const {
     apiKeyStatus,
     autoUpdaterResult,
@@ -80,15 +81,27 @@ export function Notifications(t0) {
     t3 = $[1];
   }
   const tokenUsage = t3;
+  const settings = useSettings();
+  const showInputStats = settings?.showInputStats ?? true;
+  let t_stats;
+  if ($[2] !== messages || $[3] !== showInputStats) {
+    t_stats = showInputStats ? calculateSessionStats(messages) : null;
+    $[2] = messages;
+    $[3] = showInputStats;
+    $[4] = t_stats;
+  } else {
+    t_stats = $[4];
+  }
+  const sessionStats = t_stats;
   const mainLoopModel = useMainLoopModel();
   let t4;
-  if ($[2] !== mainLoopModel || $[3] !== tokenUsage) {
+  if ($[5] !== mainLoopModel || $[6] !== tokenUsage) {
     t4 = calculateTokenWarningState(tokenUsage, mainLoopModel);
-    $[2] = mainLoopModel;
-    $[3] = tokenUsage;
-    $[4] = t4;
+    $[5] = mainLoopModel;
+    $[6] = tokenUsage;
+    $[7] = t4;
   } else {
-    t4 = $[4];
+    t4 = $[7];
   }
   const isShowingCompactMessage = t4.isAboveWarningThreshold;
   const {
@@ -102,7 +115,7 @@ export function Notifications(t0) {
   const claudeAiLimits = useClaudeAiLimits();
   let t5;
   let t6;
-  if ($[5] !== addNotification) {
+  if ($[8] !== addNotification) {
     t5 = () => {
       setEnvHookNotifier((text, isError) => {
         addNotification({
@@ -116,38 +129,38 @@ export function Notifications(t0) {
       return _temp2;
     };
     t6 = [addNotification];
-    $[5] = addNotification;
-    $[6] = t5;
-    $[7] = t6;
+    $[8] = addNotification;
+    $[9] = t5;
+    $[10] = t6;
   } else {
-    t5 = $[6];
-    t6 = $[7];
+    t5 = $[9];
+    t6 = $[10];
   }
   useEffect(t5, t6);
   const shouldShowIdeSelection = ideStatus === "connected" && (ideSelection?.filePath || ideSelection?.text && ideSelection.lineCount > 0);
   const shouldShowAutoUpdater = !shouldShowIdeSelection || isAutoUpdating || autoUpdaterResult?.status !== "success";
   const isInOverageMode = claudeAiLimits.isUsingOverage;
   let t7;
-  if ($[8] === Symbol.for("react.memo_cache_sentinel")) {
+  if ($[11] === Symbol.for("react.memo_cache_sentinel")) {
     t7 = getSubscriptionType();
-    $[8] = t7;
+    $[11] = t7;
   } else {
-    t7 = $[8];
+    t7 = $[11];
   }
   const subscriptionType = t7;
   const isTeamOrEnterprise = subscriptionType === "team" || subscriptionType === "enterprise";
   let t8;
-  if ($[9] === Symbol.for("react.memo_cache_sentinel")) {
+  if ($[12] === Symbol.for("react.memo_cache_sentinel")) {
     t8 = getExternalEditor();
-    $[9] = t8;
+    $[12] = t8;
   } else {
-    t8 = $[9];
+    t8 = $[12];
   }
   const editor = t8;
   const shouldShowExternalEditorHint = isInputWrapped && !isShowingCompactMessage && apiKeyStatus !== "invalid" && apiKeyStatus !== "missing" && editor !== undefined;
   let t10;
   let t9;
-  if ($[10] !== addNotification || $[11] !== removeNotification || $[12] !== shouldShowExternalEditorHint) {
+  if ($[13] !== addNotification || $[14] !== removeNotification || $[15] !== shouldShowExternalEditorHint) {
     t9 = () => {
       if (shouldShowExternalEditorHint && editor) {
         logEvent("tengu_external_editor_hint_shown", {});
@@ -162,48 +175,49 @@ export function Notifications(t0) {
       }
     };
     t10 = [shouldShowExternalEditorHint, editor, addNotification, removeNotification];
-    $[10] = addNotification;
-    $[11] = removeNotification;
-    $[12] = shouldShowExternalEditorHint;
-    $[13] = t10;
-    $[14] = t9;
+    $[13] = addNotification;
+    $[14] = removeNotification;
+    $[15] = shouldShowExternalEditorHint;
+    $[16] = t10;
+    $[17] = t9;
   } else {
-    t10 = $[13];
-    t9 = $[14];
+    t10 = $[16];
+    t9 = $[17];
   }
   useEffect(t9, t10);
   const t11 = isNarrow ? "flex-start" : "flex-end";
   const t12 = isInOverageMode ?? false;
   let t13;
-  if ($[15] !== apiKeyStatus || $[16] !== autoUpdaterResult || $[17] !== debug || $[18] !== ideSelection || $[19] !== isAutoUpdating || $[20] !== isShowingCompactMessage || $[21] !== mainLoopModel || $[22] !== mcpClients || $[23] !== notifications || $[24] !== onAutoUpdaterResult || $[25] !== onChangeIsUpdating || $[26] !== shouldShowAutoUpdater || $[27] !== t12 || $[28] !== tokenUsage || $[29] !== verbose) {
-    t13 = <NotificationContent ideSelection={ideSelection} mcpClients={mcpClients} notifications={notifications} isInOverageMode={t12} isTeamOrEnterprise={isTeamOrEnterprise} apiKeyStatus={apiKeyStatus} debug={debug} verbose={verbose} tokenUsage={tokenUsage} mainLoopModel={mainLoopModel} shouldShowAutoUpdater={shouldShowAutoUpdater} autoUpdaterResult={autoUpdaterResult} isAutoUpdating={isAutoUpdating} isShowingCompactMessage={isShowingCompactMessage} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={onChangeIsUpdating} />;
-    $[15] = apiKeyStatus;
-    $[16] = autoUpdaterResult;
-    $[17] = debug;
-    $[18] = ideSelection;
-    $[19] = isAutoUpdating;
-    $[20] = isShowingCompactMessage;
-    $[21] = mainLoopModel;
-    $[22] = mcpClients;
-    $[23] = notifications;
-    $[24] = onAutoUpdaterResult;
-    $[25] = onChangeIsUpdating;
-    $[26] = shouldShowAutoUpdater;
-    $[27] = t12;
-    $[28] = tokenUsage;
-    $[29] = verbose;
-    $[30] = t13;
+  if ($[18] !== apiKeyStatus || $[19] !== autoUpdaterResult || $[20] !== debug || $[21] !== ideSelection || $[22] !== isAutoUpdating || $[23] !== isShowingCompactMessage || $[24] !== mainLoopModel || $[25] !== mcpClients || $[26] !== notifications || $[27] !== onAutoUpdaterResult || $[28] !== onChangeIsUpdating || $[29] !== shouldShowAutoUpdater || $[30] !== t12 || $[31] !== tokenUsage || $[32] !== verbose || $[33] !== sessionStats) {
+    t13 = <NotificationContent ideSelection={ideSelection} mcpClients={mcpClients} notifications={notifications} isInOverageMode={t12} isTeamOrEnterprise={isTeamOrEnterprise} apiKeyStatus={apiKeyStatus} debug={debug} verbose={verbose} tokenUsage={tokenUsage} mainLoopModel={mainLoopModel} shouldShowAutoUpdater={shouldShowAutoUpdater} autoUpdaterResult={autoUpdaterResult} isAutoUpdating={isAutoUpdating} isShowingCompactMessage={isShowingCompactMessage} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={onChangeIsUpdating} sessionStats={sessionStats} />;
+    $[18] = apiKeyStatus;
+    $[19] = autoUpdaterResult;
+    $[20] = debug;
+    $[21] = ideSelection;
+    $[22] = isAutoUpdating;
+    $[23] = isShowingCompactMessage;
+    $[24] = mainLoopModel;
+    $[25] = mcpClients;
+    $[26] = notifications;
+    $[27] = onAutoUpdaterResult;
+    $[28] = onChangeIsUpdating;
+    $[29] = shouldShowAutoUpdater;
+    $[30] = t12;
+    $[31] = tokenUsage;
+    $[32] = verbose;
+    $[33] = sessionStats;
+    $[34] = t13;
   } else {
-    t13 = $[30];
+    t13 = $[34];
   }
   let t14;
-  if ($[31] !== t11 || $[32] !== t13) {
+  if ($[35] !== t11 || $[36] !== t13) {
     t14 = <SentryErrorBoundary><Box flexDirection="column" alignItems={t11} flexShrink={0} overflowX="hidden">{t13}</Box></SentryErrorBoundary>;
-    $[31] = t11;
-    $[32] = t13;
-    $[33] = t14;
+    $[35] = t11;
+    $[36] = t13;
+    $[37] = t14;
   } else {
-    t14 = $[33];
+    t14 = $[37];
   }
   return t14;
 }
@@ -229,7 +243,8 @@ function NotificationContent({
   isAutoUpdating,
   isShowingCompactMessage,
   onAutoUpdaterResult,
-  onChangeIsUpdating
+  onChangeIsUpdating,
+  sessionStats
 }: {
   ideSelection: IDESelection | undefined;
   mcpClients?: MCPServerConnection[];
@@ -250,6 +265,7 @@ function NotificationContent({
   isShowingCompactMessage: boolean;
   onAutoUpdaterResult: (result: AutoUpdaterResult) => void;
   onChangeIsUpdating: (isUpdating: boolean) => void;
+  sessionStats: { messageCount: number; totalTokens: number; totalRequests: number } | null;
 }): ReactNode {
   // Poll apiKeyHelper inflight state to show slow-helper notice.
   // Gated on configuration — most users never set apiKeyHelper, so the
@@ -323,6 +339,17 @@ function NotificationContent({
                 {voiceError}
               </Text>
             </Box> : null}
+      {sessionStats && sessionStats.messageCount > 0 && <Box>
+          <Text dimColor wrap="truncate">
+            {(() => {
+              const totalContext = mainLoopModel.includes('1M') ? 1_000_000 : 200_000;
+              const pct = Math.round((sessionStats.totalTokens / totalContext) * 100);
+              const usageStr = sessionStats.totalTokens > 1000 ? `${(sessionStats.totalTokens / 1000).toFixed(1)}k` : `${sessionStats.totalTokens}`;
+              const totalStr = totalContext >= 1_000_000 ? '1M' : '200k';
+              return `${sessionStats.messageCount} msgs · ${usageStr}/${totalStr} ${pct}% · ${sessionStats.totalRequests} reqs`;
+            })()}
+          </Text>
+        </Box>}
       <MemoryUsageIndicator />
       <SandboxPromptFooterHint />
     </>;

@@ -1,7 +1,7 @@
 import { c as _c } from "react/compiler-runtime";
 import * as React from 'react';
 import type { Command } from '../commands.js';
-import { Box } from '../ink.js';
+import { Box, Text } from '../ink.js';
 import type { Screen } from '../screens/REPL.js';
 import type { Tools } from '../Tool.js';
 import type { RenderableMessage } from '../types/message.js';
@@ -35,6 +35,8 @@ export type Props = {
   columns: number;
   isLoading: boolean;
   lookups: ReturnType<typeof buildMessageLookups>;
+  showMessageTimestamps?: boolean;
+  showTimestampUuids?: Set<string>;
 };
 
 /**
@@ -108,7 +110,9 @@ function MessageRowImpl(t0) {
     latestBashOutputUUID,
     columns,
     isLoading,
-    lookups
+    lookups,
+    showMessageTimestamps,
+    showTimestampUuids
   } = t0;
   const isTranscriptMode = screen === "transcript";
   const isGrouped = msg.type === "grouped_tool_use";
@@ -137,6 +141,14 @@ function MessageRowImpl(t0) {
     t2 = $[9];
   }
   const displayMsg = t2;
+  let timestampEl = null;
+  if (showMessageTimestamps && msg.timestamp && showTimestampUuids?.has(msg.uuid)) {
+    const date = new Date(msg.timestamp);
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const formattedTimestamp = `[${hours}:${minutes}]`;
+    timestampEl = <Text dimColor={true}>{formattedTimestamp} </Text>;
+  }
   let t3;
   if ($[10] !== isCollapsed || $[11] !== isGrouped || $[12] !== lookups || $[13] !== msg) {
     t3 = isGrouped || isCollapsed ? [] : getProgressMessagesFromLookup(msg, lookups);
@@ -255,33 +267,35 @@ function MessageRowImpl(t0) {
   const messageEl = t8;
   if (!hasMetadata) {
     let t9;
-    if ($[55] !== messageEl) {
-      t9 = <OffscreenFreeze>{messageEl}</OffscreenFreeze>;
+    if ($[55] !== messageEl || $[56] !== timestampEl) {
+      t9 = <OffscreenFreeze><Box flexDirection="row">{timestampEl}{messageEl}</Box></OffscreenFreeze>;
       $[55] = messageEl;
-      $[56] = t9;
+      $[56] = timestampEl;
+      $[57] = t9;
     } else {
-      t9 = $[56];
+      t9 = $[57];
     }
     return t9;
   }
   let t9;
-  if ($[57] !== displayMsg || $[58] !== isTranscriptMode) {
-    t9 = <Box flexDirection="row" justifyContent="flex-end" gap={1} marginTop={1}><MessageTimestamp message={displayMsg} isTranscriptMode={isTranscriptMode} /><MessageModel message={displayMsg} isTranscriptMode={isTranscriptMode} /></Box>;
-    $[57] = displayMsg;
-    $[58] = isTranscriptMode;
-    $[59] = t9;
+  if ($[58] !== displayMsg || $[59] !== isTranscriptMode) {
+    t9 = <Box flexDirection="row" justifyContent="flex-end" gap={1} marginTop={1}><MessageModel message={displayMsg} isTranscriptMode={isTranscriptMode} /></Box>;
+    $[58] = displayMsg;
+    $[59] = isTranscriptMode;
+    $[60] = t9;
   } else {
-    t9 = $[59];
+    t9 = $[60];
   }
   let t10;
-  if ($[60] !== columns || $[61] !== messageEl || $[62] !== t9) {
-    t10 = <OffscreenFreeze><Box width={columns} flexDirection="column">{t9}{messageEl}</Box></OffscreenFreeze>;
-    $[60] = columns;
-    $[61] = messageEl;
-    $[62] = t9;
-    $[63] = t10;
+  if ($[61] !== columns || $[62] !== messageEl || $[63] !== t9 || $[64] !== timestampEl) {
+    t10 = <OffscreenFreeze><Box width={columns} flexDirection="column">{t9}<Box flexDirection="row">{timestampEl}{messageEl}</Box></Box></OffscreenFreeze>;
+    $[61] = columns;
+    $[62] = messageEl;
+    $[63] = t9;
+    $[64] = timestampEl;
+    $[65] = t10;
   } else {
-    t10 = $[63];
+    t10 = $[65];
   }
   return t10;
 }

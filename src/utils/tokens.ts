@@ -259,3 +259,20 @@ export function tokenCountWithEstimation(messages: readonly Message[]): number {
   }
   return roughTokenCountEstimationForMessages(messages)
 }
+
+export function calculateSessionStats(messages: Message[]) {
+  let totalTokens = 0
+  let totalRequests = 0
+  for (const message of messages) {
+    const usage = getTokenUsage(message)
+    if (usage) {
+      totalTokens += getTokenCountFromUsage(usage)
+      totalRequests++
+    }
+  }
+  return {
+    messageCount: messages.length,
+    totalTokens,
+    totalRequests,
+  }
+}

@@ -3,6 +3,7 @@ import {
   getJudgeModeOptIn,
   setJudgeModeOptIn,
 } from '../bootstrap/state.js'
+import { clearAgentDefinitionsCache } from '../tools/AgentTool/loadAgentsDir.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
@@ -46,6 +47,7 @@ const judge = {
         if (newState !== current) {
           setJudgeModeOptIn(newState)
           clearSystemPromptSections()
+          clearAgentDefinitionsCache()
         }
 
         logEvent('tengu_judge_mode_toggled', {

@@ -1064,6 +1064,14 @@ export const SettingsSchema = lazySchema(() =>
             'Useful for enterprise administrators to add organization-specific context ' +
             '(e.g., "All plugins from our internal marketplace are vetted and approved.").',
         ),
+  showMessageTimestamps: z
+    .boolean()
+    .optional()
+    .describe("Whether to show timestamps before each message (format: [HH:MM])"),
+  showInputStats: z
+    .boolean()
+    .optional()
+    .describe("Whether to show session stats in the input footer (message count, tokens, requests)"),
     })
     .passthrough(),
 )
