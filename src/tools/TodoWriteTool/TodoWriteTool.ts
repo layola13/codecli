@@ -78,6 +78,7 @@ export const TodoWriteTool = buildTool({
       feature('VERIFICATION_AGENT') &&
       getFeatureValue_CACHED_MAY_BE_STALE('tengu_hive_evidence', false) &&
       !context.agentId &&
+      !appState.judgeModeOptIn &&
       allDone &&
       todos.length >= 3 &&
       !todos.some(t => /verif/i.test(t.content))

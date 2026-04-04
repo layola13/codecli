@@ -47,7 +47,7 @@ import { spawnTeammate } from '../shared/spawnMultiAgent.js';
 import { setAgentColor } from './agentColorManager.js';
 import { agentToolResultSchema, classifyHandoffIfNeeded, emitTaskProgress, extractPartialResult, finalizeAgentTool, getLastToolUseName, runAsyncAgentLifecycle } from './agentToolUtils.js';
 import { GENERAL_PURPOSE_AGENT } from './built-in/generalPurposeAgent.js';
-import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME, ONE_SHOT_BUILTIN_AGENT_TYPES } from './constants.js';
+import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME, ONE_SHOT_BUILTIN_AGENT_TYPES, VERIFICATION_AGENT_TYPE } from './constants.js';
 import { buildForkedMessages, buildWorktreeNotice, FORK_AGENT, isForkSubagentEnabled, isInForkChild } from './forkSubagent.js';
 import type { AgentDefinition } from './loadAgentsDir.js';
 import { filterAgentsByMcpRequirements, hasRequiredMcpServers, isBuiltInAgent } from './loadAgentsDir.js';
@@ -360,6 +360,19 @@ export const AgentTool = buildTool({
     // here because selectedAgent is only now resolved.
     if (isInProcessTeammate() && teamName && selectedAgent.background === true) {
       throw new Error(`In-process teammates cannot spawn background agents. Agent '${selectedAgent.agentType}' has background: true in its definition.`);
+    }
+
+    // Judge mode already has an automatic verification gate. If the main thread
+    // manually spawns the verification agent as well, we burn a second full
+    // verifier run and can end up with duplicated judge output.
+    if (
+      appState.judgeModeOptIn &&
+      selectedAgent.agentType === VERIFICATION_AGENT_TYPE &&
+      (toolUseContext.options.querySource?.startsWith('repl_main_thread') ?? true)
+    ) {
+      throw new Error(
+        'Judge mode already launches the verification agent automatically. Do not spawn it manually from the main thread.',
+      );
     }
 
     // Capture for type narrowing — `let selectedAgent` prevents TS from

@@ -391,6 +391,7 @@ function getSessionSpecificGuidanceSection(
       : null,
     hasAgentTool &&
     feature('VERIFICATION_AGENT') &&
+    !isJudgeModeEnabled() &&
     // 3P default: false — verification agent is ant-only A/B
     getFeatureValue_CACHED_MAY_BE_STALE('tengu_hive_evidence', false)
       ? `The contract: when non-trivial implementation happens on your turn, independent adversarial verification must happen before you report completion \u2014 regardless of who did the implementing (you directly, a fork you spawned, or a subagent). You are the one reporting to the user; you own the gate. Non-trivial means: 3+ file edits, backend/API changes, or infrastructure changes. Spawn the ${AGENT_TOOL_NAME} tool with subagent_type="${VERIFICATION_AGENT_TYPE}". Your own checks, caveats, and a fork's self-checks do NOT substitute \u2014 only the verifier assigns a verdict; you cannot self-assign PARTIAL. Pass the original user request, all files changed (by anyone), the approach, and the plan file path if applicable. Flag concerns if you have them but do NOT share test results or claim things work. On FAIL: fix, resume the verifier with its findings plus your fix, repeat until PASS. On PASS: spot-check it \u2014 re-run 2-3 commands from its report, confirm every PASS has a Command run block with output that matches your re-run. If any PASS lacks a command block or diverges, resume the verifier with the specifics. On PARTIAL (from the verifier): report what passed and what could not be verified.`
@@ -888,7 +889,7 @@ function getJudgeModeSection(): string | null {
 
 Before you report a task complete, you must get an independent verification verdict.
 
-- Spawn the ${AGENT_TOOL_NAME} tool with subagent_type="${VERIFICATION_AGENT_TYPE}" before any final completion report.
+- Judge mode launches the verifier automatically. Do not manually spawn the verification agent unless the user explicitly asks for a separate public verifier run.
 - Pass the original user task, the files changed, and the approach taken.
 - If the verifier returns FAIL, or reveals missing work, you must continue fixing the task and verify again.
 - Do not present the task as complete until the verifier returns VERDICT: PASS, unless you are genuinely blocked by missing tools, missing environment, or missing user input.

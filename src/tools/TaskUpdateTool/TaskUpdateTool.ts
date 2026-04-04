@@ -335,6 +335,7 @@ export const TaskUpdateTool = buildTool({
       feature('VERIFICATION_AGENT') &&
       getFeatureValue_CACHED_MAY_BE_STALE('tengu_hive_evidence', false) &&
       !context.agentId &&
+      !context.getAppState().judgeModeOptIn &&
       updates.status === 'completed'
     ) {
       const allTasks = await listTasks(taskListId)
