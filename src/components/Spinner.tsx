@@ -177,6 +177,7 @@ function SpinnerWithVerbInner({
     };
   }, [mode]);
   const effortValue = useAppState(s_4 => s_4.effortValue);
+  const judgeModeOptIn = useAppState(s => s.judgeModeOptIn);
   const effortSuffix = getEffortSuffix(getMainLoopModel(), effortValue);
 
   // Check if any running in-process teammates exist (needed for both modes)
@@ -206,8 +207,8 @@ function SpinnerWithVerbInner({
   // the ref. The tree is only shown when teammates are running; teammate
   // progress updates to s.tasks trigger re-renders that keep this fresh.
   const leaderTokenCount = Math.round(responseLengthRef.current / 4);
-  const defaultColor: keyof Theme = 'claude';
-  const defaultShimmerColor = 'claudeShimmer';
+  const defaultColor: keyof Theme = judgeModeOptIn ? 'green_FOR_SUBAGENTS_ONLY' : 'claude';
+  const defaultShimmerColor: keyof Theme = judgeModeOptIn ? 'rainbow_green_shimmer' : 'claudeShimmer';
   const messageColor = overrideColor ?? defaultColor;
   const shimmerColor = overrideShimmerColor ?? defaultShimmerColor;
 

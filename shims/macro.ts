@@ -1,5 +1,5 @@
 globalThis.MACRO = {
-  VERSION: '2.1.88+local.3',
+  VERSION: '2.1.88+local.4',
   BUILD_TIME: undefined,
   ISSUES_EXPLAINER: 'https://github.com/anthropics/claude-code/issues',
   FEEDBACK_CHANNEL: '#claude-code-feedback',

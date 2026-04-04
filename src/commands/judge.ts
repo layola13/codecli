@@ -18,6 +18,7 @@ import type {
 function parseNextState(args: string, current: boolean): boolean | null {
   const trimmed = args.trim().toLowerCase()
   if (!trimmed) return !current
+  if (['toggle', 'switch'].includes(trimmed)) return !current
   if (['on', 'enable', 'enabled', 'true'].includes(trimmed)) return true
   if (['off', 'disable', 'disabled', 'false'].includes(trimmed)) return false
   return null
@@ -26,21 +27,27 @@ function parseNextState(args: string, current: boolean): boolean | null {
 const judge = {
   type: 'local-jsx',
   name: 'judge',
-  description: 'Toggle judge verification mode',
-  argumentHint: '[on|off]',
+  get description() {
+    return getJudgeModeOptIn()
+      ? 'Judge verification enabled'
+      : 'Judge verification disabled'
+  },
+  get argumentHint() {
+    return '[on|off|toggle]'
+  },
   immediate: true,
   load: () =>
     Promise.resolve({
       async call(
         onDone: LocalJSXCommandOnDone,
-        _context: ToolUseContext & LocalJSXCommandContext,
+        context: ToolUseContext & LocalJSXCommandContext,
         args: string,
       ): Promise<React.ReactNode> {
         const current = getJudgeModeOptIn()
         const newState = parseNextState(args, current)
 
         if (newState === null) {
-          onDone('Usage: /judge [on|off]', { display: 'system' })
+          onDone('Usage: /judge [on|off|toggle]', { display: 'system' })
           return null
         }
 
@@ -48,6 +55,11 @@ const judge = {
           setJudgeModeOptIn(newState)
           clearSystemPromptSections()
           clearAgentDefinitionsCache()
+          // Sync to AppState so the footer badge reactively updates
+          context.setAppState(prev => ({
+            ...prev,
+            judgeModeOptIn: newState,
+          }))
         }
 
         logEvent('tengu_judge_mode_toggled', {
@@ -61,8 +73,8 @@ const judge = {
           metaMessages: [
             `<system-reminder>\n${
               newState
-                ? 'Judge mode is now enabled. Before reporting a task complete, run the verification agent for an independent PASS/FAIL/PARTIAL verdict. If the verdict is FAIL or reveals missing work, continue fixing and verify again.'
-                : 'Judge mode is now disabled. Independent verification is no longer mandatory before final completion reports.'
+                ? 'Judge mode is now enabled. The verification agent will automatically run after each turn to check whether the work meets the requirements. If the verdict is FAIL or reveals missing work, the model will continue fixing and verify again.'
+                : 'Judge mode is now disabled. Automatic verification after each turn is no longer active.'
             }\n</system-reminder>`,
           ],
         })

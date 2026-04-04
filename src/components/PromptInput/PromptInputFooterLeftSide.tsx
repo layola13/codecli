@@ -251,6 +251,7 @@ function ModeIndicator({
   const modeCycleShortcut = useShortcutDisplay('chat:cycleMode', 'Chat', 'shift+tab');
   const tasks = useAppState(s => s.tasks);
   const teamContext = useAppState(s_0 => s_0.teamContext);
+  const judgeModeOptIn = useAppState(s_7 => s_7.judgeModeOptIn);
   // Set once in initialState (main.tsx --remote mode) and never mutated — lazy
   // init captures the immutable value without a subscription.
   const store = useAppStateStore();
@@ -361,6 +362,10 @@ function ModeIndicator({
   ...(remoteSessionUrl ? [<Link url={remoteSessionUrl} key="remote">
             <Text color="ide">{figures.circleDouble} remote</Text>
           </Link>] : []),
+  // Judge mode indicator
+  ...(judgeModeOptIn ? [<Text color="ansi:green" key="judge">
+            {figures.tick} judge
+          </Text>] : []),
   // BackgroundTaskStatus is NOT in parts — it renders as a Box sibling so
   // its click-target Box isn't nested inside the <Text wrap="truncate">
   // wrapper (reconciler throws on Box-in-Text).

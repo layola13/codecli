@@ -9,6 +9,7 @@ import type {
   ServerResource,
 } from '../services/mcp/types.js'
 import { shouldEnablePromptSuggestion } from '../services/PromptSuggestion/promptSuggestion.js'
+import { getJudgeModeOptIn } from '../bootstrap/state.js'
 import {
   getEmptyToolPermissionContext,
   type Tool,
@@ -114,6 +115,8 @@ export type AppState = DeepImmutable<{
   // Single source of truth - computed once in main.tsx before option
   // mutation, consumers read this instead of re-calling isAssistantMode().
   kairosEnabled: boolean
+  // Judge mode: auto-verification after each turn (shown in footer badge)
+  judgeModeOptIn: boolean
   // Remote session URL for --remote mode (shown in footer indicator)
   remoteSessionUrl: string | undefined
   // Remote session WS state (`claude assistant` viewer). 'connected' means the
@@ -481,6 +484,7 @@ export function getDefaultAppState(): AppState {
     viewSelectionMode: 'none',
     footerSelection: null,
     kairosEnabled: false,
+    judgeModeOptIn: getJudgeModeOptIn(),
     remoteSessionUrl: undefined,
     remoteConnectionStatus: 'connecting',
     remoteBackgroundTaskCount: 0,

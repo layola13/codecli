@@ -37,3 +37,4 @@ tmp/
 
 # Transpiled vendor helper outputs
 vendor/*-src/*.js
+demo/

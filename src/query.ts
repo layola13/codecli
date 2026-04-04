@@ -110,6 +110,11 @@ import {
 } from './bootstrap/state.js'
 import { createBudgetTracker, checkTokenBudget } from './query/tokenBudget.js'
 import { count } from './utils/array.js'
+import {
+  runAutoJudge,
+  createVerdictFeedbackMessage,
+} from './judge/autoJudge.js'
+import { isJudgeModeEnabled } from './utils/judgeMode.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const snipModule = feature('HISTORY_SNIP')
@@ -176,6 +181,12 @@ function isWithheldMaxOutputTokens(
   msg: Message | StreamEvent | undefined,
 ): msg is AssistantMessage {
   return msg?.type === 'assistant' && msg.apiError === 'max_output_tokens'
+}
+
+function shouldRunAutoJudge(querySource: QuerySource): boolean {
+  // Auto-judge is a main-thread verification gate. Keep it off subagents,
+  // especially the verification agent itself, to avoid recursive judging.
+  return isJudgeModeEnabled() && querySource.startsWith('repl_main_thread')
 }
 
 export type QueryParams = {
@@ -1352,6 +1363,57 @@ async function* queryLoop(
             queryDepth: queryTracking.depth,
           })
         }
+      }
+
+      // Auto-judge: run verification agent after each main-thread turn
+      // completion. Skip subagents to avoid recursive verification loops.
+      if (shouldRunAutoJudge(querySource)) {
+        const autoJudgeResult = yield* runAutoJudge({
+          fullMessages: messagesForQuery,
+          assistantMessages,
+          toolUseContext,
+          canUseTool,
+          querySource,
+          turnNumber: turnCount,
+        })
+
+        if (autoJudgeResult.verdict !== 'PASS') {
+          const verdictMsg = createVerdictFeedbackMessage(
+            autoJudgeResult.conciseIssues,
+          )
+          logForDebugging(
+            `Auto-judge verdict: ${autoJudgeResult.verdict}, log: ${autoJudgeResult.logFilePath}`,
+          )
+          logEvent('tengu_auto_judge_verdict', {
+            verdict: autoJudgeResult.verdict,
+            logFile: autoJudgeResult.logFilePath,
+            queryChainId: queryChainIdForAnalytics,
+            queryDepth: queryTracking.depth,
+          })
+          state = {
+            messages: [
+              ...messagesForQuery,
+              ...assistantMessages,
+              verdictMsg,
+            ],
+            toolUseContext,
+            autoCompactTracking: tracking,
+            maxOutputTokensRecoveryCount: 0,
+            hasAttemptedReactiveCompact: false,
+            maxOutputTokensOverride: undefined,
+            pendingToolUseSummary: undefined,
+            stopHookActive: undefined,
+            turnCount,
+            transition: { reason: 'auto_judge_retry' },
+          }
+          continue
+        }
+
+        logEvent('tengu_auto_judge_passed', {
+          logFile: autoJudgeResult.logFilePath,
+          queryChainId: queryChainIdForAnalytics,
+          queryDepth: queryTracking.depth,
+        })
       }
 
       return { reason: 'completed' }

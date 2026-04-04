@@ -1,6 +1,6 @@
 {
   "name": "claudecode",
-  "version": "2.1.88+local.3",
+  "version": "2.1.88+local.4",
   "description": "Use Claude, Anthropic's AI assistant, right from your terminal. Claude can understand your codebase, edit files, run terminal commands, and handle entire workflows for you.",
   "author": "Anthropic <support@anthropic.com>",
   "license": "SEE LICENSE IN README.md",
@@ -36,7 +36,9 @@
     "index": "bun run build:index-bundle && node src/commands/index/cliBundle.mjs",
     "index:status": "cat .code_index/index/manifest.json 2>/dev/null || echo 'No index found. Run /index first.'",
     "typecheck": "bunx tsc --noEmit",
-    "typecheck:preview": "bunx tsc --noEmit -p tsconfig.preview-check.json"
+    "typecheck:preview": "bunx tsc --noEmit -p tsconfig.preview-check.json",
+    "buildandinstall": "bun run compile:bun && bun run install:local",
+    "buildandinstall:preview": "bun run compile:bun:preview && bun run install:local:preview"
   },
   "dependencies": {
     "@alcalzone/ansi-tokenize": "^0.1.0",
