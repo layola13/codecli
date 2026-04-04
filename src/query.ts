@@ -114,7 +114,6 @@ import {
   runAutoJudge,
   createVerdictFeedbackMessage,
 } from './judge/autoJudge.js'
-import { isJudgeModeEnabled } from './utils/judgeMode.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const snipModule = feature('HISTORY_SNIP')
@@ -183,10 +182,16 @@ function isWithheldMaxOutputTokens(
   return msg?.type === 'assistant' && msg.apiError === 'max_output_tokens'
 }
 
-function shouldRunAutoJudge(querySource: QuerySource): boolean {
+function shouldRunAutoJudge(
+  querySource: QuerySource,
+  toolUseContext: ToolUseContext,
+): boolean {
   // Auto-judge is a main-thread verification gate. Keep it off subagents,
   // especially the verification agent itself, to avoid recursive judging.
-  return isJudgeModeEnabled() && querySource.startsWith('repl_main_thread')
+  return (
+    toolUseContext.getAppState().judgeModeOptIn &&
+    querySource.startsWith('repl_main_thread')
+  )
 }
 
 export type QueryParams = {
@@ -1367,7 +1372,8 @@ async function* queryLoop(
 
       // Auto-judge: run verification agent after each main-thread turn
       // completion. Skip subagents to avoid recursive verification loops.
-      if (shouldRunAutoJudge(querySource)) {
+      if (shouldRunAutoJudge(querySource, toolUseContext)) {
+        logForDebugging(`Auto-judge starting for querySource=${querySource}`)
         const autoJudgeResult = yield* runAutoJudge({
           fullMessages: messagesForQuery,
           assistantMessages,

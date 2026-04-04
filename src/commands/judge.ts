@@ -43,15 +43,16 @@ const judge = {
         context: ToolUseContext & LocalJSXCommandContext,
         args: string,
       ): Promise<React.ReactNode> {
-        const current = getJudgeModeOptIn()
-        const newState = parseNextState(args, current)
+        const appStateCurrent = context.getAppState().judgeModeOptIn
+        const bootstrapCurrent = getJudgeModeOptIn()
+        const newState = parseNextState(args, appStateCurrent)
 
         if (newState === null) {
           onDone('Usage: /judge [on|off|toggle]', { display: 'system' })
           return null
         }
 
-        if (newState !== current) {
+        if (newState !== appStateCurrent || newState !== bootstrapCurrent) {
           setJudgeModeOptIn(newState)
           clearSystemPromptSections()
           clearAgentDefinitionsCache()

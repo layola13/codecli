@@ -29,7 +29,7 @@ import { getGlobalConfig } from '../utils/config.js';
 import { isEnvTruthy } from '../utils/envUtils.js';
 import { isFullscreenEnvEnabled } from '../utils/fullscreen.js';
 import { applyGrouping } from '../utils/groupToolUses.js';
-import { buildMessageLookups, createAssistantMessage, deriveUUID, getMessagesAfterCompactBoundary, getToolUseID, getToolUseIDs, hasUnresolvedHooksFromLookup, isNotEmptyMessage, normalizeMessages, reorderMessagesInUI, type StreamingThinking, type StreamingToolUse, shouldShowUserMessage } from '../utils/messages.js';
+import { buildMessageLookups, createAssistantMessage, deriveUUID, getMessagesAfterCompactBoundary, getToolUseID, getToolUseIDs, hasUnresolvedHooksFromLookup, isEmptyMessageText, isNotEmptyMessage, normalizeMessages, reorderMessagesInUI, SYNTHETIC_MESSAGES, type StreamingThinking, type StreamingToolUse, shouldShowUserMessage } from '../utils/messages.js';
 import { plural } from '../utils/stringUtils.js';
 import { renderableSearchText } from '../utils/transcriptSearch.js';
 import { Divider } from './design-system/Divider.js';
@@ -84,6 +84,18 @@ const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS') ? (require('..
 
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { VirtualMessageList } from './VirtualMessageList.js';
+
+function isTimestampEligibleMessage(msg: RenderableMessage): boolean {
+  if (!msg.timestamp) return false;
+  if (msg.type === 'assistant') {
+    return msg.message.content.some(block => block.type === 'text' && !isEmptyMessageText(block.text) && !SYNTHETIC_MESSAGES.has(block.text));
+  }
+  if (msg.type === 'user') {
+    if (msg.isMeta || msg.isCompactSummary) return false;
+    return msg.message.content.some(block => block.type === 'text' && !isEmptyMessageText(block.text) && !SYNTHETIC_MESSAGES.has(block.text) && !block.text.trimStart().startsWith('<'));
+  }
+  return false;
+}
 
 /**
  * In brief-only mode, filter messages to show ONLY Brief tool_use blocks,
@@ -547,14 +559,21 @@ const MessagesImpl = ({
   const showTimestampUuids = useMemo(() => {
     if (!showMessageTimestamps) return new Set<string>();
     const result = new Set<string>();
-    let lastType: string | undefined;
+    let lastUserMinuteBucket: number | null = null;
+    let lastAssistantMinuteBucket: number | null = null;
     for (const msg of renderableMessages) {
-      if (msg.type === 'assistant' || msg.type === 'user') {
-        if (lastType !== msg.type) {
-          result.add(msg.uuid);
-        }
-        lastType = msg.type;
+      if (!isTimestampEligibleMessage(msg)) continue;
+      const timestamp = new Date(msg.timestamp).getTime();
+      if (Number.isNaN(timestamp)) continue;
+      const minuteBucket = Math.floor(timestamp / 60000);
+      if (msg.type === 'user') {
+        if (minuteBucket === lastUserMinuteBucket) continue;
+        lastUserMinuteBucket = minuteBucket;
+      } else {
+        if (minuteBucket === lastAssistantMinuteBucket) continue;
+        lastAssistantMinuteBucket = minuteBucket;
       }
+      result.add(msg.uuid);
     }
     return result;
   }, [renderableMessages, showMessageTimestamps]);

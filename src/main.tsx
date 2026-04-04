@@ -3015,6 +3015,7 @@ async function run(): Promise<CommanderCommand> {
       },
       statusLineText: undefined,
       kairosEnabled,
+      judgeModeOptIn: isJudgeModeEnabled(),
       remoteSessionUrl: undefined,
       remoteConnectionStatus: 'connecting',
       remoteBackgroundTaskCount: 0,
