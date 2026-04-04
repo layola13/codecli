@@ -11,8 +11,12 @@ import type {
 } from '../types/message.js'
 import { createUserMessage, extractTextContent } from '../utils/messages.js'
 import type { QuerySource } from '../constants/querySource.js'
-import { parseVerdict, type Verdict } from './parseVerdict.js'
+import { type Verdict } from './parseVerdict.js'
 import { saveJudgeLog } from './judgeLogger.js'
+import { logForDebugging } from '../utils/debug.js'
+import { AUTO_JUDGE_QUERY_SOURCE } from './judgeQuerySource.js'
+import { resolveAutoJudgeOutcome } from './resolveAutoJudgeOutcome.js'
+import { appendJudgeTrace } from './judgeTraceLogger.js'
 
 export interface AutoJudgeResult {
   verdict: Verdict
@@ -20,6 +24,12 @@ export interface AutoJudgeResult {
   logFilePath: string
   /** Concise issue summary for the main thread — NOT the full report */
   conciseIssues: string
+}
+
+function buildVerificationDescription(task: string): string {
+  const trimmed = task.trim().replace(/\s+/g, ' ')
+  if (!trimmed) return 'Verify task'
+  return `Verify ${trimmed}`.slice(0, 120)
 }
 
 /**
@@ -95,22 +105,6 @@ function extractFileChanges(messages: Message[]): string[] {
 }
 
 /**
- * Extract a concise issue summary from the judge report for FAIL/PARTIAL verdicts.
- * Takes the first few check items that failed, limited to ~300 chars for the main thread.
- */
-function extractConciseIssues(report: string): string {
-  // Find the first FAIL check and extract its description
-  const failMatch = report.match(/### Check:[^\n]*\n[\s\S]*?Result: FAIL[^\n]*\n?([\s\S]*?)(?=### Check:|VERDICT:|$)/i)
-  if (failMatch) {
-    const section = failMatch[1].trim()
-    // Limit to first 400 chars to avoid flooding the main context
-    return section.length > 400 ? section.slice(0, 400) + '\n...(see judge log for full details)' : section
-  }
-  // Fallback: first 300 chars of the report
-  return report.length > 300 ? report.slice(0, 300) + '\n...(see judge log for full details)' : report
-}
-
-/**
  * Run the verification agent against the current conversation state.
  * Yields progress messages and returns the parsed verdict + log path + concise issues.
  */
@@ -126,83 +120,162 @@ export async function* runAutoJudge(params: {
   StreamEvent | Message | TombstoneMessage | ToolUseSummaryMessage,
   AutoJudgeResult
 > {
-  const { fullMessages, assistantMessages, toolUseContext, canUseTool, querySource, turnNumber } = params
-
-  const conversationMessages = [...fullMessages, ...assistantMessages]
-
-  // Build a comprehensive verification prompt with full context.
-  // The judge is an independent agent — it receives the entire conversation,
-  // not just the last turn.
-  const originalTask = extractOriginalTask(conversationMessages)
-  const conversationSummary = extractConversationSummary(conversationMessages)
-  const fileChanges = extractFileChanges(conversationMessages)
-
-  const lastAssistantText = assistantMessages
-    .filter(m => m.type === 'assistant')
-    .map(m => extractTextContent(m.message.content, '\n'))
-    .join('\n\n')
-
-  const fileChangesSection = fileChanges.length > 0
-    ? `=== Files Changed ===\n${fileChanges.join('\n')}\n\n`
-    : ''
-
-  const verificationPrompt =
-    `You are verifying whether the following task has been correctly completed.\n\n` +
-    `=== Original Task ===\n${originalTask}\n\n` +
-    `${fileChangesSection}` +
-    `=== Conversation Summary ===\n${conversationSummary}\n\n` +
-    `=== Assistant's Most Recent Response ===\n${lastAssistantText}\n\n` +
-    `=== Instructions ===\n` +
-    `Based on the original task, the conversation history, and the assistant's recent response, ` +
-    `verify whether the work is actually correct and complete. ` +
-    `Pay attention to whether issues from previous judge rounds have been properly fixed. ` +
-    `Run the appropriate verification commands independently — do not trust the assistant's claims.\n\n` +
-    `Report your findings and end with VERDICT: PASS, VERDICT: FAIL, or VERDICT: PARTIAL.`
-
-  // Give the judge its own abortController so it isn't cancelled when the
-  // main thread is aborted. The judge should complete its verification
-  // independently.
-  const judgeAbortController = new AbortController()
-
-  const agentMessages: Message[] = []
-
-  for await (const message of runAgent({
-    agentDefinition: VERIFICATION_AGENT,
-    promptMessages: [createUserMessage({ content: verificationPrompt })],
+  const {
+    fullMessages,
+    assistantMessages,
     toolUseContext,
     canUseTool,
-    isAsync: false,
     querySource,
-    availableTools: toolUseContext.options.tools,
-    override: { abortController: judgeAbortController },
-  })) {
-    agentMessages.push(message)
-    yield message
-  }
-
-  // Extract the final assistant message text and parse verdict.
-  const lastAssistant = agentMessages.findLast(m => m.type === 'assistant')
-  const report = lastAssistant
-    ? extractTextContent(lastAssistant.message.content, '\n')
-    : ''
-
-  // If the judge didn't output a valid VERDICT line (e.g. network error,
-  // prompt truncated), default to PASS to avoid false-positive retry loops.
-  const verdict = parseVerdict(report) ?? 'PASS'
-
-  // Save full report to .claude/logs/judge/
-  const logFilePath = await saveJudgeLog({
-    verdict,
-    report,
     turnNumber,
-  })
+  } = params
 
-  // Return concise result for the main thread.
-  const conciseIssues = verdict === 'PASS'
-    ? ''
-    : extractConciseIssues(report)
+  try {
+    await appendJudgeTrace({
+      stage: 'judge_run_started',
+      turnNumber,
+      querySource,
+      agentId: toolUseContext.agentId,
+      assistantMessageCount: assistantMessages.length,
+      appJudgeModeOptIn: toolUseContext.getAppState().judgeModeOptIn,
+      details: {
+        judgeQuerySource: AUTO_JUDGE_QUERY_SOURCE,
+        fullMessageCount: fullMessages.length,
+      },
+    })
 
-  return { verdict, logFilePath, conciseIssues }
+    const conversationMessages = [...fullMessages, ...assistantMessages]
+
+    // Build a comprehensive verification prompt with full context.
+    // The judge is an independent agent — it receives the entire conversation,
+    // not just the last turn.
+    const originalTask = extractOriginalTask(conversationMessages)
+    const verificationDescription = buildVerificationDescription(originalTask)
+    const conversationSummary = extractConversationSummary(conversationMessages)
+    const fileChanges = extractFileChanges(conversationMessages)
+
+    const lastAssistantText = assistantMessages
+      .filter(m => m.type === 'assistant')
+      .map(m => extractTextContent(m.message.content, '\n'))
+      .join('\n\n')
+
+    const fileChangesSection = fileChanges.length > 0
+      ? `=== Files Changed ===\n${fileChanges.join('\n')}\n\n`
+      : ''
+
+    const verificationPrompt =
+      `You are verifying whether the following task has been correctly completed.\n\n` +
+      `=== Original Task ===\n${originalTask}\n\n` +
+      `${fileChangesSection}` +
+      `=== Conversation Summary ===\n${conversationSummary}\n\n` +
+      `=== Assistant's Most Recent Response ===\n${lastAssistantText}\n\n` +
+      `=== Instructions ===\n` +
+      `Based on the original task, the conversation history, and the assistant's recent response, ` +
+      `verify whether the work is actually correct and complete. ` +
+      `Pay attention to whether issues from previous judge rounds have been properly fixed. ` +
+      `Run the appropriate verification commands independently — do not trust the assistant's claims.\n\n` +
+      `Report your findings and end with VERDICT: PASS, VERDICT: FAIL, or VERDICT: PARTIAL.`
+
+    await appendJudgeTrace({
+      stage: 'judge_prompt_built',
+      turnNumber,
+      querySource,
+      agentId: toolUseContext.agentId,
+      details: {
+        fileChangeCount: fileChanges.length,
+        promptLength: verificationPrompt.length,
+        description: verificationDescription,
+      },
+    })
+
+    const agentMessages: Message[] = []
+
+    for await (const message of runAgent({
+      agentDefinition: VERIFICATION_AGENT,
+      promptMessages: [createUserMessage({ content: verificationPrompt })],
+      toolUseContext,
+      canUseTool,
+      // Run in verification-agent mode (background semantics) rather than as a
+      // synchronous inline subagent. The caller still waits on this generator,
+      // so the main thread cannot complete before the verifier finishes.
+      isAsync: true,
+      // The verifier must run as its own query source so main-thread-only gates
+      // treat it as an independent judge, not as another repl_main_thread turn.
+      querySource: AUTO_JUDGE_QUERY_SOURCE,
+      availableTools: toolUseContext.options.tools,
+      description: verificationDescription,
+    })) {
+      agentMessages.push(message)
+      yield message
+    }
+
+    // Extract the final assistant message text and parse verdict.
+    const lastAssistant = agentMessages.findLast(m => m.type === 'assistant')
+    const report = lastAssistant
+      ? extractTextContent(lastAssistant.message.content, '\n')
+      : ''
+
+    logForDebugging(`[autoJudge] lastAssistant=${!!lastAssistant}, report.length=${report.length}`)
+    logForDebugging(`[autoJudge] report preview: ${report.slice(0, 200)}`)
+
+    await appendJudgeTrace({
+      stage: 'judge_report_collected',
+      turnNumber,
+      querySource,
+      agentId: toolUseContext.agentId,
+      details: {
+        judgeMessageCount: agentMessages.length,
+        hasFinalAssistant: !!lastAssistant,
+        reportLength: report.length,
+      },
+    })
+
+    const {
+      verdict,
+      conciseIssues,
+    } = resolveAutoJudgeOutcome(report)
+
+    await appendJudgeTrace({
+      stage: 'judge_verdict_resolved',
+      turnNumber,
+      querySource,
+      agentId: toolUseContext.agentId,
+      verdict,
+      details: {
+        conciseIssuesLength: conciseIssues.length,
+      },
+    })
+
+    logForDebugging(`[autoJudge] verdict=${verdict}, saving log...`)
+
+    // Save full report to .claude/logs/judge/
+    const logFilePath = await saveJudgeLog({
+      verdict,
+      report,
+      turnNumber,
+    })
+
+    await appendJudgeTrace({
+      stage: 'judge_log_saved',
+      turnNumber,
+      querySource,
+      agentId: toolUseContext.agentId,
+      verdict,
+      logFilePath,
+    })
+
+    logForDebugging(`[autoJudge] log saved to: ${logFilePath}`)
+
+    return { verdict, logFilePath, conciseIssues }
+  } catch (error) {
+    await appendJudgeTrace({
+      stage: 'judge_run_failed',
+      turnNumber,
+      querySource,
+      agentId: toolUseContext.agentId,
+      reason: error instanceof Error ? error.message : String(error),
+    })
+    throw error
+  }
 }
 
 /**
@@ -212,8 +285,8 @@ export async function* runAutoJudge(params: {
 export function createVerdictFeedbackMessage(conciseIssues: string): Message {
   return createUserMessage({
     content:
-      `The verification check did not pass. Key issue:\n\n` +
+      `The verification gate is not satisfied yet. Key issue:\n\n` +
       conciseIssues +
-      `\n\nPlease address this and continue. The full verification report has been saved to the project's .claude/logs/judge/ directory for reference.`,
+      `\n\nPlease address this and continue. Do not mark the task complete until the judge returns VERDICT: PASS. The full verification report has been saved to the project's .claude/logs/judge/ directory for reference.`,
   })
 }

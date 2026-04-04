@@ -50,3 +50,8 @@ We have implemented several safeguards to protect your data, including limited r
 For full details, please review our [Commercial Terms of Service](https://www.anthropic.com/legal/commercial-terms) and [Privacy Policy](https://www.anthropic.com/legal/privacy).
 codex --dangerously-bypass-approvals-and-sandbox
  claudecode --dangerously-skip-permissions    
+  claudenative --dangerously-skip-permissions 
+sk-76be5fad0a8a4cb2f047040dade230437cd1a31cdab4b95fd228b6a635150c94
+
+export ANTHROPIC_BASE_URL="https://wbz-api.939593.xyz/v1"
+export ANTHROPIC_AUTH_TOKEN="sk-76be5fad0a8a4cb2f047040dade230437cd1a31cdab4b95fd228b6a635150c94"
