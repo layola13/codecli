@@ -11,6 +11,7 @@ import type {
 } from '../types/message.js'
 import {
   createUserMessage,
+  createSystemMessage,
   extractTextContent,
   getContentText,
 } from '../utils/messages.js'
@@ -194,6 +195,11 @@ export async function* runAutoJudge(params: {
       },
     })
 
+    yield createSystemMessage(
+      `verification(${verificationDescription})`,
+      'suggestion',
+    )
+
     const agentMessages: Message[] = []
 
     for await (const message of runAgent({
@@ -201,10 +207,9 @@ export async function* runAutoJudge(params: {
       promptMessages: [createUserMessage({ content: verificationPrompt })],
       toolUseContext,
       canUseTool,
-      // Run in verification-agent mode (background semantics) rather than as a
-      // synchronous inline subagent. The caller still waits on this generator,
-      // so the main thread cannot complete before the verifier finishes.
-      isAsync: true,
+      // Keep verifier execution private so the user sees a single visible
+      // verification start marker, not the verifier's full internal chatter.
+      isAsync: false,
       // The verifier must run as its own query source so main-thread-only gates
       // treat it as an independent judge, not as another repl_main_thread turn.
       querySource: AUTO_JUDGE_QUERY_SOURCE,
@@ -212,7 +217,6 @@ export async function* runAutoJudge(params: {
       description: verificationDescription,
     })) {
       agentMessages.push(message)
-      yield message
     }
 
     // Extract the final assistant message text and parse verdict.
