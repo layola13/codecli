@@ -585,6 +585,7 @@ async function* queryLoop(
     }
 
     const assistantMessages: AssistantMessage[] = []
+    const withheldAssistantMessagesForJudge: AssistantMessage[] = []
     const toolResults: (UserMessage | AttachmentMessage)[] = []
     // @see https://docs.claude.com/en/docs/build-with-claude/tool-use
     // Note: stop_reason === 'tool_use' is unreliable -- it's not always set correctly.
@@ -860,6 +861,16 @@ async function* queryLoop(
             }
             if (isWithheldMaxOutputTokens(message)) {
               withheld = true
+            }
+            const isJudgeWithheldAssistant =
+              message.type === 'assistant' &&
+              !message.isApiErrorMessage &&
+              appState.judgeModeOptIn &&
+              querySource.startsWith('repl_main_thread') &&
+              !message.message.content.some(content => content.type === 'tool_use')
+            if (isJudgeWithheldAssistant) {
+              withheld = true
+              withheldAssistantMessagesForJudge.push(message)
             }
             if (!withheld) {
               yield yieldMessage
@@ -1332,6 +1343,9 @@ async function* queryLoop(
         assistantMessageCount: assistantMessages.length,
         blockingErrorCount: stopHookResult.blockingErrors.length,
         preventContinuation: stopHookResult.preventContinuation,
+        details: {
+          judgeWithheldAssistantCount: withheldAssistantMessagesForJudge.length,
+        },
       })
 
       if (stopHookResult.preventContinuation) {
@@ -1450,6 +1464,9 @@ async function* queryLoop(
           : !querySource.startsWith('repl_main_thread')
             ? 'non_main_thread_query_source'
             : undefined,
+        details: {
+          judgeWithheldAssistantCount: withheldAssistantMessagesForJudge.length,
+        },
       })
 
       if (shouldAutoJudge) {
@@ -1544,6 +1561,9 @@ async function* queryLoop(
           verdict: autoJudgeResult.verdict,
           logFilePath: autoJudgeResult.logFilePath,
         })
+        for (const withheldMessage of withheldAssistantMessagesForJudge) {
+          yield withheldMessage
+        }
         logEvent('tengu_auto_judge_passed', {
           logFile: autoJudgeResult.logFilePath,
           queryChainId: queryChainIdForAnalytics,

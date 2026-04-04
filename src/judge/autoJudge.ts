@@ -9,7 +9,11 @@ import type {
   TombstoneMessage,
   ToolUseSummaryMessage,
 } from '../types/message.js'
-import { createUserMessage, extractTextContent } from '../utils/messages.js'
+import {
+  createUserMessage,
+  extractTextContent,
+  getContentText,
+} from '../utils/messages.js'
 import type { QuerySource } from '../constants/querySource.js'
 import { type Verdict } from './parseVerdict.js'
 import { saveJudgeLog } from './judgeLogger.js'
@@ -38,7 +42,10 @@ function buildVerificationDescription(task: string): string {
 function extractOriginalTask(messages: Message[]): string {
   for (const m of messages) {
     if (m.type === 'user' && !m.isMeta) {
-      return extractTextContent(m.content, '\n')
+      const content = getContentText(m.message.content)
+      if (content) {
+        return content
+      }
     }
   }
   return '(original task not found)'
