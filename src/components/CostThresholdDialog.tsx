@@ -1,6 +1,7 @@
 import { c as _c } from "react/compiler-runtime";
 import React from 'react';
 import { Box, Link, Text } from '../ink.js';
+import { isAutoAllowEnabled } from '../utils/autoAllow.js';
 import { Select } from './CustomSelect/index.js';
 import { Dialog } from './design-system/Dialog.js';
 type Props = {
@@ -30,7 +31,7 @@ export function CostThresholdDialog(t0) {
   }
   let t3;
   if ($[2] !== onDone) {
-    t3 = <Select options={t2} onChange={onDone} />;
+    t3 = <Select options={t2} autoSelectFirstOption={isAutoAllowEnabled()} onChange={onDone} />;
     $[2] = onDone;
     $[3] = t3;
   } else {

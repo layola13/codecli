@@ -5,6 +5,7 @@ import type { KeybindingAction } from '../../keybindings/types.js';
 import { useKeybindings } from '../../keybindings/useKeybinding.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
 import { useSetAppState } from '../../state/AppState.js';
+import { isAutoAllowEnabled } from '../../utils/autoAllow.js';
 import { type OptionWithDescription, Select } from '../CustomSelect/select.js';
 export type FeedbackType = 'accept' | 'reject';
 export type PermissionPromptOption<T extends string> = {
@@ -293,7 +294,7 @@ export function PermissionPrompt(t0) {
   }
   let t10;
   if ($[42] !== handleCancel || $[43] !== handleInputModeToggle || $[44] !== handleSelect || $[45] !== selectOptions || $[46] !== t9) {
-    t10 = <Select options={selectOptions} inlineDescriptions={true} onChange={handleSelect} onCancel={handleCancel} onFocus={t9} onInputModeToggle={handleInputModeToggle} />;
+    t10 = <Select options={selectOptions} inlineDescriptions={true} autoSelectFirstOption={isAutoAllowEnabled()} onChange={handleSelect} onCancel={handleCancel} onFocus={t9} onInputModeToggle={handleInputModeToggle} />;
     $[42] = handleCancel;
     $[43] = handleInputModeToggle;
     $[44] = handleSelect;

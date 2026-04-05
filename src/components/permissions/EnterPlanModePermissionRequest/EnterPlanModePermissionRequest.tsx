@@ -4,6 +4,7 @@ import { handlePlanModeTransition } from '../../../bootstrap/state.js';
 import { Box, Text } from '../../../ink.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../../services/analytics/index.js';
 import { useAppState } from '../../../state/AppState.js';
+import { isAutoAllowEnabled } from '../../../utils/autoAllow.js';
 import { isPlanModeInterviewPhaseEnabled } from '../../../utils/planModeV2.js';
 import { Select } from '../../CustomSelect/index.js';
 import { PermissionDialog } from '../PermissionDialog.js';
@@ -98,7 +99,7 @@ export function EnterPlanModePermissionRequest(t0) {
   }
   let t8;
   if ($[12] !== handleResponse || $[13] !== t7) {
-    t8 = <Box flexDirection="column" marginTop={1} paddingX={1}>{t2}{t3}{t4}<Box marginTop={1}><Select options={t6} onChange={handleResponse} onCancel={t7} /></Box></Box>;
+    t8 = <Box flexDirection="column" marginTop={1} paddingX={1}>{t2}{t3}{t4}<Box marginTop={1}><Select options={t6} autoSelectFirstOption={isAutoAllowEnabled()} onChange={handleResponse} onCancel={t7} /></Box></Box>;
     $[12] = handleResponse;
     $[13] = t7;
     $[14] = t8;

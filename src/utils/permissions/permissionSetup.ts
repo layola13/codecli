@@ -1,6 +1,7 @@
 import { feature } from 'bun:bundle'
 import { relative } from 'path'
 import {
+  getAutoContinueOptIn,
   getOriginalCwd,
   handleAutoModeTransition,
   handlePlanModeTransition,
@@ -1361,6 +1362,7 @@ export function getAutoModeEnabledStateIfCached():
  */
 export function hasAutoModeOptInAnySource(): boolean {
   if (autoModeStateModule?.getAutoModeFlagCli() ?? false) return true
+  if (getAutoContinueOptIn()) return true
   return hasAutoModeOptIn()
 }
 
@@ -1446,7 +1448,7 @@ export function isDefaultPermissionModeAuto(): boolean {
 export function shouldPlanUseAutoMode(): boolean {
   if (feature('TRANSCRIPT_CLASSIFIER')) {
     return (
-      hasAutoModeOptIn() &&
+      (hasAutoModeOptIn() || getAutoContinueOptIn()) &&
       isAutoModeGateEnabled() &&
       getUseAutoModeDuringPlan()
     )

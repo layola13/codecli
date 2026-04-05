@@ -59,6 +59,7 @@ import { SLEEP_TOOL_NAME } from '../tools/SleepTool/prompt.js'
 import { TICK_TAG } from './xml.js'
 import { logForDebugging } from '../utils/debug.js'
 import { loadMemoryPrompt } from '../memdir/memdir.js'
+import { isAutoContinueEnabled } from '../utils/autoContinue.js'
 import { isConciseEnabled } from '../utils/conciseMode.js'
 import { isJudgeModeEnabled } from '../utils/judgeMode.js'
 import { isQuietModeEnabled } from '../utils/quietMode.js'
@@ -558,6 +559,9 @@ ${CYBER_RISK_INSTRUCTION}`,
     ...(isQuietModeEnabled()
       ? [systemPromptSection('quiet_mode', () => getQuietModeSection())]
       : []),
+    ...(isAutoContinueEnabled()
+      ? [systemPromptSection('auto_continue', () => getAutoContinueSection())]
+      : []),
     ...(isJudgeModeEnabled()
       ? [systemPromptSection('judge_mode', () => getJudgeModeSection())]
       : []),
@@ -880,6 +884,21 @@ Minimize user-facing chatter while you work.
   3. You have completed a meaningful result and are ready to report it.
 - If ${BRIEF_TOOL_NAME} is available, do not use it for interim progress updates. Reserve it for blockers, required confirmations, or the final completion summary.
 - If the task is long, batch your work and report once at the end rather than narrating intermediate milestones.`
+}
+
+function getAutoContinueSection(): string | null {
+  if (!isAutoContinueEnabled()) return null
+
+  return `# Autocontinue mode
+
+Keep going when the next step is obvious.
+
+- Treat routine next steps as already approved. If phase 1 naturally leads to phase 2, continue into phase 2 instead of stopping to ask.
+- Do not ask questions like "if you agree, I can continue", "want me to keep going?", "should I do the next step?", or similar when the next action is a normal continuation of the current task.
+- Do not stop just to report that one phase finished if you can immediately move into the next obvious implementation, debugging, verification, or cleanup step.
+- When you find a likely next action, execute it instead of proposing it.
+- Only pause when you need genuinely new user input, when an action is risky or hard to undo, when costs or external side effects are meaningful, or when multiple materially different directions need an explicit user choice.
+- If quiet mode is also enabled, continue silently through obvious next steps and report only at the real stopping point.`
 }
 
 function getJudgeModeSection(): string | null {

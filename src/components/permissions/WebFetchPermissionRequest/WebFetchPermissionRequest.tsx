@@ -2,6 +2,7 @@ import { c as _c } from "react/compiler-runtime";
 import React, { useMemo } from 'react';
 import { Box, Text, useTheme } from '../../../ink.js';
 import { WebFetchTool } from '../../../tools/WebFetchTool/WebFetchTool.js';
+import { isAutoAllowEnabled } from '../../../utils/autoAllow.js';
 import { shouldShowAlwaysAllowOptions } from '../../../utils/permissions/permissionsLoader.js';
 import { type OptionWithDescription, Select } from '../../CustomSelect/select.js';
 import { type UnaryEvent, usePermissionRequestLogging } from '../hooks.js';
@@ -226,7 +227,7 @@ export function WebFetchPermissionRequest(t0) {
   }
   let t13;
   if ($[30] !== onChange || $[31] !== options || $[32] !== t12) {
-    t13 = <Select options={options} onChange={onChange} onCancel={t12} />;
+    t13 = <Select options={options} autoSelectFirstOption={isAutoAllowEnabled()} onChange={onChange} onCancel={t12} />;
     $[30] = onChange;
     $[31] = options;
     $[32] = t12;

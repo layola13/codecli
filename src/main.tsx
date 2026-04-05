@@ -84,10 +84,11 @@ import { isAnalyticsDisabled } from 'src/services/analytics/config.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import { initializeAnalyticsGates } from 'src/services/analytics/sink.js';
-import { getConciseModeOptIn, getOriginalCwd, getUserMsgOptIn, setAdditionalDirectoriesForClaudeMd, setConciseModeOptIn, setIsRemoteMode, setJudgeModeOptIn, setMainLoopModelOverride, setMainThreadAgentType, setQuietModeOptIn, setTeleportedSessionInfo, setUserMsgOptIn } from './bootstrap/state.js';
+import { getAutoAllowOptIn, getAutoContinueOptIn, getConciseModeOptIn, getOriginalCwd, getUserMsgOptIn, setAdditionalDirectoriesForClaudeMd, setAutoAllowOptIn, setAutoContinueOptIn, setConciseModeOptIn, setIsRemoteMode, setJudgeModeOptIn, setMainLoopModelOverride, setMainThreadAgentType, setQuietModeOptIn, setTeleportedSessionInfo, setUserMsgOptIn } from './bootstrap/state.js';
 import { filterCommandsForRemoteMode, getCommands } from './commands.js';
 import type { StatsStore } from './context/stats.js';
 import { launchAssistantInstallWizard, launchAssistantSessionChooser, launchInvalidSettingsDialog, launchResumeChooser, launchSnapshotUpdateDialog, launchTeleportRepoMismatchDialog, launchTeleportResumeWrapper } from './dialogLaunchers.js';
+import { enableAutoContinuePermissionContext } from './utils/autoContinue.js';
 import { isBriefEnabled, isBriefEntitled } from './utils/briefMode.js';
 import { isJudgeModeEnabled } from './utils/judgeMode.js';
 import { isQuietModeEnabled } from './utils/quietMode.js';
@@ -1114,6 +1115,27 @@ async function run(): Promise<CommanderCommand> {
       includeHookEvents,
       includePartialMessages
     } = options;
+    const autoAllowFlag = (options as {
+      autoallow?: boolean;
+    }).autoallow === true;
+    const autoContinueFlag = (options as {
+      autocontinue?: boolean;
+    }).autocontinue === true;
+    const effectivePermissionModeCli =
+      feature('TRANSCRIPT_CLASSIFIER') &&
+      autoContinueFlag &&
+      !permissionModeCli
+        ? 'auto'
+        : permissionModeCli;
+    const autoContinueRestoreMode =
+      feature('TRANSCRIPT_CLASSIFIER') &&
+      autoContinueFlag &&
+      !permissionModeCli
+        ? initialPermissionModeFromCLI({
+            permissionModeCli,
+            dangerouslySkipPermissions,
+          }).mode
+        : undefined;
     if (options.prefill) {
       seedEarlyInput(options.prefill);
     }
@@ -1399,7 +1421,7 @@ async function run(): Promise<CommanderCommand> {
       mode: permissionMode,
       notification: permissionModeNotification
     } = initialPermissionModeFromCLI({
-      permissionModeCli,
+      permissionModeCli: effectivePermissionModeCli,
       dangerouslySkipPermissions
     });
 
@@ -1414,7 +1436,7 @@ async function run(): Promise<CommanderCommand> {
       // auto-unavailable, and by tengu_auto_mode_config opt-in carousel.
       if ((options as {
         enableAutoMode?: boolean;
-      }).enableAutoMode || permissionModeCli === 'auto' || permissionMode === 'auto' || !permissionModeCli && isDefaultPermissionModeAuto()) {
+      }).enableAutoMode || autoContinueFlag || effectivePermissionModeCli === 'auto' || permissionMode === 'auto' || !effectivePermissionModeCli && isDefaultPermissionModeAuto()) {
         autoModeStateModule?.setAutoModeFlagCli(true);
       }
     }
@@ -1779,6 +1801,25 @@ async function run(): Promise<CommanderCommand> {
     }
     if (feature('TRANSCRIPT_CLASSIFIER') && dangerousPermissions.length > 0) {
       toolPermissionContext = stripDangerousPermissionsForAutoMode(toolPermissionContext);
+    }
+    if (feature('TRANSCRIPT_CLASSIFIER') && autoContinueFlag) {
+      setAutoContinueOptIn(true);
+      toolPermissionContext =
+        enableAutoContinuePermissionContext(toolPermissionContext);
+      if (
+        autoContinueRestoreMode !== undefined &&
+        autoContinueRestoreMode !== 'auto' &&
+        toolPermissionContext.mode === 'auto' &&
+        toolPermissionContext.autoContinueRestoreMode === undefined
+      ) {
+        toolPermissionContext = {
+          ...toolPermissionContext,
+          autoContinueRestoreMode,
+        };
+      }
+    }
+    if (autoAllowFlag) {
+      setAutoAllowOptIn(true);
     }
 
     // Print any warnings from initialization
@@ -2209,6 +2250,8 @@ async function run(): Promise<CommanderCommand> {
       }
     }
     writeStartupTrace('after teammate prompt setup');
+    maybeActivateAutoAllow(options);
+    maybeActivateAutoContinue(options);
     maybeActivateBrief(options);
     maybeActivateConcise(options);
     maybeActivateQuiet(options);
@@ -3181,10 +3224,20 @@ async function run(): Promise<CommanderCommand> {
           mainThreadAgentDefinition = loaded.restoredAgentDef;
         }
         maybeActivateProactive(options);
+        maybeActivateAutoAllow(options);
+        maybeActivateAutoContinue(options);
         maybeActivateBrief(options);
         maybeActivateConcise(options);
         maybeActivateQuiet(options);
         maybeActivateJudge(options);
+        if (feature('TRANSCRIPT_CLASSIFIER') && autoContinueFlag) {
+          loaded.initialState = {
+            ...loaded.initialState,
+            toolPermissionContext: enableAutoContinuePermissionContext(
+              loaded.initialState.toolPermissionContext,
+            ),
+          };
+        }
         logEvent('tengu_continue', {
           success: true,
           resume_duration_ms: Math.round(performance.now() - resumeStart)
@@ -3788,10 +3841,20 @@ async function run(): Promise<CommanderCommand> {
       } : undefined);
       if (resumeData) {
         maybeActivateProactive(options);
+        maybeActivateAutoAllow(options);
+        maybeActivateAutoContinue(options);
         maybeActivateBrief(options);
         maybeActivateConcise(options);
         maybeActivateQuiet(options);
         maybeActivateJudge(options);
+        if (feature('TRANSCRIPT_CLASSIFIER') && autoContinueFlag) {
+          resumeData.initialState = {
+            ...resumeData.initialState,
+            toolPermissionContext: enableAutoContinuePermissionContext(
+              resumeData.initialState.toolPermissionContext,
+            ),
+          };
+        }
         await launchRepl(root, {
           getFpsMetrics,
           stats,
@@ -3827,6 +3890,8 @@ async function run(): Promise<CommanderCommand> {
       const pendingHookMessages = hooksPromise && hookMessages.length === 0 ? hooksPromise : undefined;
       profileCheckpoint('action_after_hooks');
       maybeActivateProactive(options);
+      maybeActivateAutoAllow(options);
+      maybeActivateAutoContinue(options);
       maybeActivateBrief(options);
       maybeActivateConcise(options);
       maybeActivateQuiet(options);
@@ -3901,6 +3966,8 @@ async function run(): Promise<CommanderCommand> {
     program.addOption(new Option('--messaging-socket-path <path>', 'Unix domain socket path for the UDS messaging server (defaults to a tmp path)'));
   }
   program.addOption(new Option('--brief', 'Enable SendUserMessage tool for agent-to-user communication'));
+  program.addOption(new Option('--autoallow', 'Automatically choose the first allow/continue option in blocking dialogs'));
+  program.addOption(new Option('--autocontinue', 'Continue through obvious next phases without pausing to ask, and authorize auto mode for this session when available'));
   program.addOption(new Option('--concise', 'Enable concise output mode'));
   program.addOption(new Option('--quiet', 'Suppress intermediate progress updates until blocked or done'));
   program.addOption(new Option('--judge', 'Require an independent verification pass before reporting completion'));
@@ -4713,6 +4780,32 @@ function maybeActivateBrief(options: unknown): void {
     enabled: entitled,
     gated: !entitled,
     source: (briefEnv ? 'env' : 'flag') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
+  });
+}
+function maybeActivateAutoAllow(options: unknown): void {
+  const autoAllowFlag = (options as {
+    autoallow?: boolean;
+  }).autoallow;
+  if (!autoAllowFlag) return;
+  if (!getAutoAllowOptIn()) {
+    setAutoAllowOptIn(true);
+  }
+  logEvent('tengu_autoallow_enabled', {
+    enabled: true,
+    source: 'flag' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
+  });
+}
+function maybeActivateAutoContinue(options: unknown): void {
+  const autoContinueFlag = (options as {
+    autocontinue?: boolean;
+  }).autocontinue;
+  if (!autoContinueFlag) return;
+  if (!getAutoContinueOptIn()) {
+    setAutoContinueOptIn(true);
+  }
+  logEvent('tengu_autocontinue_enabled', {
+    enabled: true,
+    source: 'flag' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
   });
 }
 function maybeActivateConcise(options: unknown): void {

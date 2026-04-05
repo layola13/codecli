@@ -10,6 +10,7 @@ import { Box, Text, useInput } from '../../ink.js';
 import { useKeybinding } from '../../keybindings/useKeybinding.js';
 import type { ElicitationRequestEvent } from '../../services/mcp/elicitationHandler.js';
 import { openBrowser } from '../../utils/browser.js';
+import { isAutoAllowEnabled } from '../../utils/autoAllow.js';
 import { getEnumLabel, getEnumValues, getMultiSelectLabel, getMultiSelectValues, isDateTimeSchema, isEnumSchema, isMultiSelectEnumSchema, validateElicitationInput, validateElicitationInputAsync } from '../../utils/mcp/elicitationValidation.js';
 import { plural } from '../../utils/stringUtils.js';
 import { ConfigurableShortcutHint } from '../ConfigurableShortcutHint.js';
@@ -158,6 +159,7 @@ function ElicitationFormDialog({
   } = request;
   const hasFields = Object.keys(requestedSchema.properties).length > 0;
   const [focusedButton, setFocusedButton] = useState<'accept' | 'decline' | null>(hasFields ? null : 'accept');
+  const autoAcceptedRef = useRef(false);
   const [formValues, setFormValues] = useState<Record<string, string | number | boolean | string[]>>(() => {
     const initialValues: Record<string, string | number | boolean | string[]> = {};
     if (requestedSchema.properties) {
@@ -197,6 +199,13 @@ function ElicitationFormDialog({
       signal.removeEventListener('abort', handleAbort);
     };
   }, [signal, onResponse]);
+  useEffect(() => {
+    if (autoAcceptedRef.current || hasFields || !isAutoAllowEnabled()) {
+      return;
+    }
+    autoAcceptedRef.current = true;
+    onResponse('accept', formValues);
+  }, [formValues, hasFields, onResponse]);
   const schemaFields = useMemo(() => {
     const requiredFields = requestedSchema.required ?? [];
     return Object.entries(requestedSchema.properties).map(([name, schema]) => ({
@@ -1002,6 +1011,7 @@ function ElicitationURLDialog({
   } = urlParams;
   const [phase, setPhase] = useState<'prompt' | 'waiting'>('prompt');
   const phaseRef = useRef<'prompt' | 'waiting'>('prompt');
+  const autoAcceptedRef = useRef(false);
   const [focusedButton, setFocusedButton] = useState<'accept' | 'decline' | 'open' | 'action' | 'cancel'>('accept');
   const showCancel = waitingState?.showCancel ?? false;
   useNotifyAfterTimeout('Claude Code needs your input', 'elicitation_url_dialog');
@@ -1054,6 +1064,17 @@ function ElicitationURLDialog({
     phaseRef.current = 'waiting';
     setFocusedButton('open');
   }, [onResponse, url]);
+  useEffect(() => {
+    if (
+      autoAcceptedRef.current ||
+      phase !== 'prompt' ||
+      !isAutoAllowEnabled()
+    ) {
+      return;
+    }
+    autoAcceptedRef.current = true;
+    handleAccept();
+  }, [handleAccept, phase]);
 
   // eslint-disable-next-line custom-rules/prefer-use-keybindings -- raw input for button navigation
   useInput((_input, key) => {

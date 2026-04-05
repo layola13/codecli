@@ -80,6 +80,8 @@ type State = {
   conciseModeOptIn: boolean
   quietModeOptIn: boolean
   judgeModeOptIn: boolean
+  autoAllowOptIn: boolean
+  autoContinueOptIn: boolean
   clientType: string
   sessionSource: string | undefined
   questionPreviewFormat: 'markdown' | 'html' | undefined
@@ -310,6 +312,8 @@ function getInitialState(): State {
     conciseModeOptIn: false,
     quietModeOptIn: false,
     judgeModeOptIn: false,
+    autoAllowOptIn: false,
+    autoContinueOptIn: false,
     clientType: 'cli',
     sessionSource: undefined,
     questionPreviewFormat: undefined,
@@ -1139,6 +1143,22 @@ export function getJudgeModeOptIn(): boolean {
 
 export function setJudgeModeOptIn(value: boolean): void {
   STATE.judgeModeOptIn = value
+}
+
+export function getAutoAllowOptIn(): boolean {
+  return STATE.autoAllowOptIn
+}
+
+export function setAutoAllowOptIn(value: boolean): void {
+  STATE.autoAllowOptIn = value
+}
+
+export function getAutoContinueOptIn(): boolean {
+  return STATE.autoContinueOptIn
+}
+
+export function setAutoContinueOptIn(value: boolean): void {
+  STATE.autoContinueOptIn = value
 }
 
 export function getSessionSource(): string | undefined {

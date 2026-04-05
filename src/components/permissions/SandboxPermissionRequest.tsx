@@ -3,6 +3,7 @@ import * as React from 'react';
 import { Box, Text } from 'src/ink.js';
 import { type NetworkHostPattern, shouldAllowManagedSandboxDomainsOnly } from 'src/utils/sandbox/sandbox-adapter.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
+import { isAutoAllowEnabled } from '../../utils/autoAllow.js';
 import { Select } from '../CustomSelect/select.js';
 import { PermissionDialog } from './PermissionDialog.js';
 export type SandboxPermissionRequestProps = {
@@ -141,7 +142,7 @@ export function SandboxPermissionRequest(t0) {
   }
   let t12;
   if ($[15] !== onSelect || $[16] !== options || $[17] !== t11) {
-    t12 = <Box><Select options={options} onChange={onSelect} onCancel={t11} /></Box>;
+    t12 = <Box><Select options={options} autoSelectFirstOption={isAutoAllowEnabled()} onChange={onSelect} onCancel={t11} /></Box>;
     $[15] = onSelect;
     $[16] = options;
     $[17] = t11;

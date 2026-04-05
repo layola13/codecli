@@ -7,6 +7,7 @@ import { Ansi, Box, Text } from '../../ink.js';
 import { count } from '../../utils/array.js';
 import type { PastedContent } from '../../utils/config.js';
 import type { ImageDimensions } from '../../utils/imageResizer.js';
+import { getAutoSelectFirstValue } from './autoSelect.js';
 import { SelectInputOption } from './select-input-option.js';
 import { SelectOption } from './select-option.js';
 import { useSelectInput } from './use-select-input.js';
@@ -188,6 +189,11 @@ export type SelectProps<T> = {
    * Callback to remove a pasted image by its ID.
    */
   readonly onRemoveImage?: (id: number) => void;
+
+  /**
+   * Automatically submit the first enabled non-input option when the dialog opens.
+   */
+  readonly autoSelectFirstOption?: boolean;
 };
 export function Select(t0) {
   const $ = _c(72);
@@ -213,6 +219,7 @@ export function Select(t0) {
     pastedContents,
     onRemoveImage
   } = t0;
+  const autoSelectFirstOption = t0.autoSelectFirstOption === true;
   const isDisabled = t1 === undefined ? false : t1;
   const hideIndexes = t2 === undefined ? false : t2;
   const visibleOptionCount = t3 === undefined ? 5 : t3;
@@ -238,6 +245,7 @@ export function Select(t0) {
     t7 = $[1];
   }
   const [inputValues, setInputValues] = useState(t7);
+  const autoSelectedRef = useRef(false);
   let t8;
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
     t8 = new Map();
@@ -346,6 +354,22 @@ export function Select(t0) {
     t14 = $[27];
   }
   useSelectInput(t14);
+  useEffect(() => {
+    if (
+      autoSelectedRef.current ||
+      !autoSelectFirstOption ||
+      isDisabled ||
+      !onChange
+    ) {
+      return;
+    }
+    const value = getAutoSelectFirstValue(options);
+    if (value === undefined) {
+      return;
+    }
+    autoSelectedRef.current = true;
+    onChange(value);
+  }, [autoSelectFirstOption, isDisabled, onChange, options]);
   let T0;
   let t15;
   let t16;
@@ -507,7 +531,7 @@ export function Select(t0) {
         } else {
           t19 = $[63];
         }
-        const maxLabelWidth = Math.max(...optionData.map(t19));
+        const maxLabelWidth = optionData.reduce((max, data) => Math.max(max, t19(data)), 0);
         let t20;
         if ($[64] !== hideIndexes || $[65] !== maxIndexWidth_1 || $[66] !== maxLabelWidth) {
           t20 = data_0 => {

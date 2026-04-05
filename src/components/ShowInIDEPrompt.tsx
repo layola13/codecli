@@ -2,6 +2,7 @@ import { c as _c } from "react/compiler-runtime";
 import { basename, relative } from 'path';
 import React from 'react';
 import { Box, Text } from '../ink.js';
+import { isAutoAllowEnabled } from '../utils/autoAllow.js';
 import { getCwd } from '../utils/cwd.js';
 import { isSupportedVSCodeTerminal } from '../utils/ide.js';
 import { Select } from './CustomSelect/index.js';
@@ -126,7 +127,7 @@ export function ShowInIDEPrompt(t0) {
   }
   let t9;
   if ($[20] !== onInputModeToggle || $[21] !== options || $[22] !== t6 || $[23] !== t7 || $[24] !== t8) {
-    t9 = <Select options={options} inlineDescriptions={true} onChange={t6} onCancel={t7} onFocus={t8} onInputModeToggle={onInputModeToggle} />;
+    t9 = <Select options={options} inlineDescriptions={true} autoSelectFirstOption={isAutoAllowEnabled()} onChange={t6} onCancel={t7} onFocus={t8} onInputModeToggle={onInputModeToggle} />;
     $[20] = onInputModeToggle;
     $[21] = options;
     $[22] = t6;
