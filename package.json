@@ -38,7 +38,8 @@
     "typecheck": "bunx tsc --noEmit",
     "typecheck:preview": "bunx tsc --noEmit -p tsconfig.preview-check.json",
     "buildandinstall": "bun run compile:bun && bun run install:local",
-    "buildandinstall:preview": "bun run compile:bun:preview && bun run install:local:preview"
+    "buildandinstall:preview": "bun run compile:bun:preview && bun run install:local:preview",
+    "build:all":"bun run buildandinstall && bun run buildandinstall:preview"
   },
   "dependencies": {
     "@alcalzone/ansi-tokenize": "^0.1.0",
