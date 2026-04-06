@@ -11,6 +11,7 @@ import {
   getDefaultBashTimeoutMs,
   getMaxBashTimeoutMs,
 } from '../../utils/timeouts.js'
+import { getCodeIndexToolDeferralHint } from '../../utils/codeIndexGuidance.js'
 import {
   getUndercoverInstructions,
   isUndercover,
@@ -21,6 +22,7 @@ import { FILE_READ_TOOL_NAME } from '../FileReadTool/prompt.js'
 import { FILE_WRITE_TOOL_NAME } from '../FileWriteTool/prompt.js'
 import { GLOB_TOOL_NAME } from '../GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from '../GrepTool/prompt.js'
+import { SKILL_TOOL_NAME } from '../SkillTool/constants.js'
 import { TodoWriteTool } from '../TodoWriteTool/TodoWriteTool.js'
 import { BASH_TOOL_NAME } from './toolName.js'
 
@@ -278,6 +280,10 @@ export function getSimplePrompt(): string {
   const embedded = hasEmbeddedSearchTools()
 
   const toolPreferenceItems = [
+    getCodeIndexToolDeferralHint({
+      skillToolName: SKILL_TOOL_NAME,
+      toolName: BASH_TOOL_NAME,
+    }),
     ...(embedded
       ? []
       : [

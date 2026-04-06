@@ -4,6 +4,8 @@ export type CodeLanguage =
   | 'python'
   | 'generic'
 
+export const CODE_INDEX_ARTIFACT_VERSION = 1
+
 export type EdgeKind = 'imports' | 'calls' | 'inherits' | 'depends_on'
 
 export type SourceLineRange = {
@@ -76,6 +78,7 @@ export type EdgeIR = {
 }
 
 export type CodeIndexManifest = {
+  artifactVersion: number
   rootDir: string
   outputDir: string
   createdAt: string
@@ -84,6 +87,8 @@ export type CodeIndexManifest = {
   functionCount: number
   methodCount: number
   edgeCount: number
+  fileLimit?: number
+  fileLimitReached: boolean
   truncatedCount: number
   languages: Record<string, number>
   parseModes: Record<string, number>

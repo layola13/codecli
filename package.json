@@ -18,7 +18,7 @@
   "scripts": {
     "postinstall": "bash scripts/postinstall.sh",
     "prepare": "node -e \"if (!process.env.AUTHORIZED) { console.error('ERROR: Direct publishing is not allowed.\\nPlease see the release workflow documentation to publish this package.'); process.exit(1); }\"",
-    "build:command-bundle": "bun build src/commands/index/cliBundleEntry.ts --target=node --format=esm --outfile src/commands/index/cliBundle.mjs",
+    "build:command-bundle": "bun scripts/build-index-command-bundle.mjs",
     "patch:cli-sidecar": "node scripts/patch-cli-sidecar.mjs",
     "build:index-bundle": "bun run build:command-bundle",
     "build:bun": "bun scripts/bun-build.mjs --source",

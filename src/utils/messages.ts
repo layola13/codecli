@@ -3729,9 +3729,12 @@ Read the team config to discover your teammates' names. Check the task list peri
       if (!attachment.content) {
         return []
       }
+      const codeIndexReminder = /\n?- code-index\b/.test(attachment.content)
+        ? 'If `code-index` is listed and the repository has a generated `.code_index`, this is a BLOCKING REQUIREMENT for repository analysis, dependency tracing, symbol lookup, and locating implementation files: invoke `code-index` before broad Read/Grep/Glob or shell-based repo scanning. Only skip this when the index is stale, insufficient, or the user explicitly asks for raw source inspection first.\n\n'
+        : ''
       return wrapMessagesInSystemReminder([
         createUserMessage({
-          content: `The following skills are available for use with the Skill tool:\n\n${attachment.content}`,
+          content: `${codeIndexReminder}The following skills are available for use with the Skill tool:\n\n${attachment.content}`,
           isMeta: true,
         }),
       ])
