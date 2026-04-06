@@ -9,6 +9,7 @@ import { PowerShellTool } from '../../../tools/PowerShellTool/PowerShellTool.js'
 import { isAllowlistedCommand } from '../../../tools/PowerShellTool/readOnlyValidation.js';
 import type { PermissionUpdate } from '../../../utils/permissions/PermissionUpdateSchema.js';
 import { getCompoundCommandPrefixesStatic } from '../../../utils/powershell/staticPrefix.js';
+import { isAutoAllowEnabled } from '../../../utils/autoAllow.js';
 import { Select } from '../../CustomSelect/select.js';
 import { type UnaryEvent, usePermissionRequestLogging } from '../hooks.js';
 import { PermissionDecisionDebugInfo } from '../PermissionDecisionDebugInfo.js';
@@ -219,7 +220,7 @@ export function PowerShellPermissionRequest(props: PermissionRequestProps): Reac
                 <Text color="warning">{destructiveWarning}</Text>
               </Box>}
             <Text>Do you want to proceed?</Text>
-            <Select options={options} inlineDescriptions onChange={onSelect} onCancel={() => handleReject()} onFocus={handleFocus} onInputModeToggle={handleInputModeToggle} />
+            <Select options={options} inlineDescriptions autoSelectFirstOption={isAutoAllowEnabled()} onChange={onSelect} onCancel={() => handleReject()} onFocus={handleFocus} onInputModeToggle={handleInputModeToggle} />
           </Box>
           <Box justifyContent="space-between" marginTop={1}>
             <Text dimColor>

@@ -7,6 +7,7 @@ import { getLanguageName } from '../../../utils/cliHighlight.js';
 import { getCwd } from '../../../utils/cwd.js';
 import { getFsImplementation, safeResolvePath } from '../../../utils/fsOperations.js';
 import { expandPath } from '../../../utils/path.js';
+import { isAutoAllowEnabled } from '../../../utils/autoAllow.js';
 import type { CompletionType } from '../../../utils/unaryLogging.js';
 import { Select } from '../../CustomSelect/index.js';
 import { ShowInIDEPrompt } from '../../ShowInIDEPrompt.js';
@@ -171,7 +172,7 @@ export function FilePermissionDialog<T extends ToolInput = ToolInput>({
         {content}
         <Box flexDirection="column" paddingX={1}>
           {typeof question === 'string' ? <Text>{question}</Text> : question}
-          <Select options={options} inlineDescriptions onChange={value => {
+          <Select options={options} inlineDescriptions autoSelectFirstOption={isAutoAllowEnabled()} onChange={value => {
           const selected = options.find(opt => opt.value === value);
           if (selected) {
             // For reject option

@@ -1,6 +1,6 @@
 import { c as _c } from "react/compiler-runtime";
 import type { Base64ImageSource, ImageBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
-import React, { Suspense, use, useCallback, useMemo, useRef, useState } from 'react';
+import React, { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSettings } from '../../../hooks/useSettings.js';
 import { useTerminalSize } from '../../../hooks/useTerminalSize.js';
 import { stringWidth } from '../../../ink/stringWidth.js';
@@ -17,6 +17,7 @@ import { maybeResizeAndDownsampleImageBlock } from '../../../utils/imageResizer.
 import { cacheImagePath, storeImage } from '../../../utils/imageStore.js';
 import { logError } from '../../../utils/log.js';
 import { applyMarkdown } from '../../../utils/markdown.js';
+import { isAutoAllowEnabled } from '../../../utils/autoAllow.js';
 import { isPlanModeInterviewPhaseEnabled } from '../../../utils/planModeV2.js';
 import { getPlanFilePath } from '../../../utils/plans.js';
 import type { PermissionRequestProps } from '../PermissionRequest.js';
@@ -249,6 +250,7 @@ function AskUserQuestionPermissionRequestBody(t0) {
     setAnswer,
     setTextInputMode
   } = state;
+  const autoSubmittedAnswersRef = useRef(false);
   const currentQuestion = currentQuestionIndex < (questions?.length || 0) ? questions?.[currentQuestionIndex] : null;
   const isInSubmitView = currentQuestionIndex === (questions?.length || 0);
   let t11;
@@ -479,6 +481,26 @@ Questions asked and answers provided:\n${questionsWithAnswers_0}`;
     t17 = $[65];
   }
   const handleFinalResponse = t17;
+  useEffect(() => {
+    if (autoSubmittedAnswersRef.current || !isAutoAllowEnabled()) {
+      return;
+    }
+    if (
+      questions.length === 0 ||
+      !questions.every(
+        question =>
+          question.options.length > 0 && question.options[0]?.label !== '__other__',
+      )
+    ) {
+      return;
+    }
+
+    autoSubmittedAnswersRef.current = true;
+    const answersToSubmit = Object.fromEntries(
+      questions.map(question => [question.question, question.options[0]!.label]),
+    );
+    void submitAnswers(answersToSubmit).catch(logError);
+  }, [questions, submitAnswers]);
   const maxIndex = hideSubmitTab ? (questions?.length || 1) - 1 : questions?.length || 0;
   let t18;
   if ($[66] !== currentQuestionIndex || $[67] !== prevQuestion) {

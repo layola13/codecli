@@ -24,6 +24,7 @@ import { logError } from '../../../utils/log.js';
 import { enqueuePendingNotification } from '../../../utils/messageQueueManager.js';
 import { createUserMessage } from '../../../utils/messages.js';
 import { getMainLoopModel, getRuntimeMainLoopModel } from '../../../utils/model/model.js';
+import { isAutoAllowEnabled } from '../../../utils/autoAllow.js';
 import { createPromptRuleContent, isClassifierPermissionsEnabled, PROMPT_PREFIX } from '../../../utils/permissions/bashClassifier.js';
 import { type PermissionMode, toExternalPermissionMode } from '../../../utils/permissions/PermissionMode.js';
 import type { PermissionUpdate } from '../../../utils/permissions/PermissionUpdateSchema.js';
@@ -182,7 +183,9 @@ export function ExitPlanModePermissionRequest({
       return next;
     });
   }, []);
-  const imageAttachments = Object.values(pastedContents).filter(c => c.type === 'image');
+  const imageAttachments = Object.values(pastedContents).filter(
+    (c): c is PastedContent & { type: 'image' } => c.type === 'image',
+  );
   const hasImages = imageAttachments.length > 0;
 
   // TODO: Delete the branch after moving to V2
@@ -535,7 +538,7 @@ export function ExitPlanModePermissionRequest({
     setStickyFooter(<Box flexDirection="column" borderStyle="round" borderColor="planMode" borderLeft={false} borderRight={false} borderBottom={false} paddingX={1}>
         <Text dimColor>Would you like to proceed?</Text>
         <Box marginTop={1}>
-          <Select options={options} onChange={v => void handleResponseRef.current(v)} onCancel={() => handleCancelRef.current?.()} onImagePaste={onImagePaste} pastedContents={pastedContents} onRemoveImage={onRemoveImage} />
+          <Select options={options} autoSelectFirstOption={isAutoAllowEnabled()} onChange={v => void handleResponseRef.current(v)} onCancel={() => handleCancelRef.current?.()} onImagePaste={onImagePaste} pastedContents={pastedContents} onRemoveImage={onRemoveImage} />
         </Box>
         {editorName && <Box flexDirection="row" gap={1} marginTop={1}>
             <Text dimColor>ctrl-g to edit in </Text>
@@ -608,7 +611,7 @@ export function ExitPlanModePermissionRequest({
           }, {
             label: 'No',
             value: 'no' as const
-          }]} onChange={handleEmptyPlanResponse} onCancel={() => {
+          }]} autoSelectFirstOption={isAutoAllowEnabled()} onChange={handleEmptyPlanResponse} onCancel={() => {
             logEvent('tengu_plan_exit', {
               planLengthChars: 0,
               outcome: 'no' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -648,7 +651,7 @@ export function ExitPlanModePermissionRequest({
                   you like to proceed?
                 </Text>
                 <Box marginTop={1}>
-                  <Select options={options} onChange={handleResponse} onCancel={() => handleCancelRef.current?.()} onImagePaste={onImagePaste} pastedContents={pastedContents} onRemoveImage={onRemoveImage} />
+                  <Select options={options} autoSelectFirstOption={isAutoAllowEnabled()} onChange={handleResponse} onCancel={() => handleCancelRef.current?.()} onImagePaste={onImagePaste} pastedContents={pastedContents} onRemoveImage={onRemoveImage} />
                 </Box>
               </>}
           </Box>

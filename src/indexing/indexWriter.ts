@@ -1,7 +1,14 @@
 import { mkdir, writeFile } from 'fs/promises'
 import { join, parse as parsePath, posix } from 'path'
-import type { CodeIndexManifest, EdgeIR, FunctionIR, ModuleIR } from './ir.js'
+import {
+  CODE_INDEX_ARTIFACT_VERSION,
+  type CodeIndexManifest,
+  type EdgeIR,
+  type FunctionIR,
+  type ModuleIR,
+} from './ir.js'
 import { safePythonIdentifier } from './parserUtils.js'
+import { createYieldState, maybeYieldToEventLoop } from './runtime.js'
 
 function makeEdgeId(index: number): string {
   return `edge-${index.toString().padStart(6, '0')}`
@@ -19,10 +26,12 @@ function renderFunctionSignature(fn: FunctionIR): string {
   return `${fn.name}(${params})${fn.returns ? ` -> ${fn.returns}` : ''}`
 }
 
-export function buildEdges(modules: readonly ModuleIR[]): EdgeIR[] {
+export async function buildEdges(modules: readonly ModuleIR[]): Promise<EdgeIR[]> {
   const edges: EdgeIR[] = []
+  const yieldState = createYieldState()
 
   for (const module of modules) {
+    await maybeYieldToEventLoop(yieldState)
     for (const imported of module.imports) {
       edges.push({
         edgeId: makeEdgeId(edges.length + 1),
@@ -97,6 +106,8 @@ export function buildEdges(modules: readonly ModuleIR[]): EdgeIR[] {
 
 export function buildManifest(args: {
   edges: readonly EdgeIR[]
+  fileLimitReached: boolean
+  maxFiles?: number
   modules: readonly ModuleIR[]
   outputDir: string
   rootDir: string
@@ -121,6 +132,7 @@ export function buildManifest(args: {
   }
 
   return {
+    artifactVersion: CODE_INDEX_ARTIFACT_VERSION,
     rootDir: args.rootDir,
     outputDir: args.outputDir,
     createdAt: new Date().toISOString(),
@@ -129,6 +141,8 @@ export function buildManifest(args: {
     functionCount,
     methodCount,
     edgeCount: args.edges.length,
+    fileLimit: args.maxFiles,
+    fileLimitReached: args.fileLimitReached,
     truncatedCount,
     languages,
     parseModes,
@@ -165,6 +179,8 @@ function renderSummary(args: {
     `- functions: ${args.manifest.functionCount}`,
     `- methods: ${args.manifest.methodCount}`,
     `- edges: ${args.manifest.edgeCount}`,
+    `- file_limit: ${args.manifest.fileLimit ?? 'none'}`,
+    `- file_limit_reached: ${args.manifest.fileLimitReached ? 'yes' : 'no'}`,
     `- truncated_files: ${args.manifest.truncatedCount}`,
     '',
     '## Languages',
@@ -382,14 +398,16 @@ type FileDependencyEdge = {
   targetPath: string
 }
 
-function buildFileDependencyEdges(
+async function buildFileDependencyEdges(
   modules: readonly ModuleIR[],
-): FileDependencyEdge[] {
+): Promise<FileDependencyEdge[]> {
   const aliasMap = buildModuleAliasMap(modules)
   const seenEdges = new Set<string>()
   const edges: FileDependencyEdge[] = []
+  const yieldState = createYieldState()
 
   for (const module of modules) {
+    await maybeYieldToEventLoop(yieldState)
     for (const imported of module.imports) {
       const targetPath = resolveImportToModulePath({
         aliasMap,
@@ -430,8 +448,8 @@ function escapeDotLabel(value: string): string {
     .replace(/\r/g, '')
 }
 
-function renderArchitectureDot(modules: readonly ModuleIR[]): string {
-  const edges = buildFileDependencyEdges(modules)
+async function renderArchitectureDot(modules: readonly ModuleIR[]): Promise<string> {
+  const edges = await buildFileDependencyEdges(modules)
   const nodePaths = [...new Set(edges.flatMap(edge => [edge.sourcePath, edge.targetPath]))]
     .sort((left, right) => left.localeCompare(right))
 
@@ -459,6 +477,8 @@ function renderArchitectureDot(modules: readonly ModuleIR[]): string {
 
 export async function writeIndexFiles(args: {
   edges: readonly EdgeIR[]
+  fileLimitReached: boolean
+  maxFiles?: number
   modules: readonly ModuleIR[]
   outputDir: string
   rootDir: string
@@ -494,7 +514,9 @@ export async function writeIndexFiles(args: {
   await writeFile(join(indexDir, 'modules.jsonl'), moduleLines.join('\n') + '\n', 'utf8')
 
   const symbolLines: string[] = []
+  const yieldState = createYieldState()
   for (const module of args.modules) {
+    await maybeYieldToEventLoop(yieldState)
     for (const cls of module.classes) {
       symbolLines.push(
         JSON.stringify({
@@ -551,7 +573,7 @@ export async function writeIndexFiles(args: {
   )
   await writeFile(
     join(indexDir, 'architecture.dot'),
-    renderArchitectureDot(args.modules),
+    await renderArchitectureDot(args.modules),
     'utf8',
   )
 

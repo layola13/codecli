@@ -14,6 +14,7 @@ import { isQueuedCommandEditable, popAllEditable } from 'src/utils/messageQueueM
 import stripAnsi from 'strip-ansi';
 import { companionReservedColumns } from '../../buddy/CompanionSprite.js';
 import { findBuddyTriggerPositions, useBuddyNotification } from '../../buddy/useBuddyNotification.js';
+import { getAutoContinueOptIn } from '../../bootstrap/state.js';
 import { FastModePicker } from '../../commands/fast/fast.js';
 import { isUltrareviewEnabled } from '../../commands/review/ultrareviewEnabled.js';
 import { getNativeCSIuTerminalDisplayName } from '../../commands/terminalSetup/terminalSetup.js';
@@ -1454,7 +1455,7 @@ function PromptInput({
     // not bypass the safety text.
     let isEnteringAutoModeFirstTime = false;
     if (feature('TRANSCRIPT_CLASSIFIER')) {
-      isEnteringAutoModeFirstTime = nextMode === 'auto' && toolPermissionContext.mode !== 'auto' && !hasAutoModeOptIn() && !viewingAgentTaskId; // Only show for primary agent, not subagents
+      isEnteringAutoModeFirstTime = nextMode === 'auto' && toolPermissionContext.mode !== 'auto' && !hasAutoModeOptIn() && !getAutoContinueOptIn() && !viewingAgentTaskId; // Only show for primary agent, not subagents
     }
     if (feature('TRANSCRIPT_CLASSIFIER')) {
       if (isEnteringAutoModeFirstTime) {

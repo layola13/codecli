@@ -3,6 +3,7 @@ import * as React from 'react';
 import { Box, Text } from '../../ink.js';
 import { useKeybinding } from '../../keybindings/useKeybinding.js';
 import type { PromptRequest } from '../../types/hooks.js';
+import { isAutoAllowEnabled } from '../../utils/autoAllow.js';
 import { Select } from '../CustomSelect/select.js';
 import { PermissionDialog } from '../permissions/PermissionDialog.js';
 type Props = {
@@ -60,7 +61,7 @@ export function PromptDialog(t0) {
   }
   let t5;
   if ($[7] !== options || $[8] !== t4) {
-    t5 = <Box flexDirection="column" paddingY={1}><Select options={options} onChange={t4} /></Box>;
+    t5 = <Box flexDirection="column" paddingY={1}><Select options={options} autoSelectFirstOption={isAutoAllowEnabled()} onChange={t4} /></Box>;
     $[7] = options;
     $[8] = t4;
     $[9] = t5;

@@ -68,6 +68,8 @@ const proactive =
     ? require('./commands/proactive.js').default
     : null
 const briefCommand = require('./commands/brief.js').default
+const autoAllowCommand = require('./commands/autoallow.js').default
+const autoContinueCommand = require('./commands/autocontinue.js').default
 const conciseCommand = require('./commands/concise.js').default
 const quietCommand = require('./commands/quiet.js').default
 const judgeCommand = require('./commands/judge.js').default
@@ -331,6 +333,8 @@ const COMMANDS = memoize((): Command[] => [
   ...(buddy ? [buddy] : []),
   ...(proactive ? [proactive] : []),
   ...(briefCommand ? [briefCommand] : []),
+  ...(autoAllowCommand ? [autoAllowCommand] : []),
+  ...(autoContinueCommand ? [autoContinueCommand] : []),
   ...(conciseCommand ? [conciseCommand] : []),
   ...(quietCommand ? [quietCommand] : []),
   ...(judgeCommand ? [judgeCommand] : []),

@@ -3,7 +3,7 @@ import { appendFileSync } from 'fs';
 import React from 'react';
 import { logEvent } from 'src/services/analytics/index.js';
 import { gracefulShutdown, gracefulShutdownSync } from 'src/utils/gracefulShutdown.js';
-import { type ChannelEntry, getAllowedChannels, setAllowedChannels, setHasDevChannels, setSessionTrustAccepted, setStatsStore } from './bootstrap/state.js';
+import { type ChannelEntry, getAllowedChannels, getAutoContinueOptIn, setAllowedChannels, setHasDevChannels, setSessionTrustAccepted, setStatsStore } from './bootstrap/state.js';
 import type { Command } from './commands.js';
 import { createStatsStore, type StatsStore } from './context/stats.js';
 import { getSystemContext } from './context.js';
@@ -258,7 +258,11 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
     // gate denied it (org not allowlisted, settings disabled), showing
     // consent for an unavailable feature is pointless. The
     // verifyAutoModeGateAccess notification will explain why instead.
-    if (permissionMode === 'auto' && !hasAutoModeOptIn()) {
+    if (
+      permissionMode === 'auto' &&
+      !hasAutoModeOptIn() &&
+      !getAutoContinueOptIn()
+    ) {
       const {
         AutoModeOptInDialog
       } = await import('./components/AutoModeOptInDialog.js');

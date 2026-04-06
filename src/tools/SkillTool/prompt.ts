@@ -16,6 +16,7 @@ import { logForDebugging } from '../../utils/debug.js'
 import { toError } from '../../utils/errors.js'
 import { truncate } from '../../utils/format.js'
 import { logError } from '../../utils/log.js'
+import { CODE_INDEX_SKILL_NAME } from '../../utils/codeIndexGuidance.js'
 
 // Skill listing gets 1% of the context window (in characters)
 export const SKILL_BUDGET_CONTEXT_PERCENT = 0.01
@@ -188,6 +189,7 @@ How to invoke:
 Important:
 - Available skills are listed in system-reminder messages in the conversation
 - When a skill matches the user's request, this is a BLOCKING REQUIREMENT: invoke the relevant Skill tool BEFORE generating any other response about the task
+- When \`${CODE_INDEX_SKILL_NAME}\` is listed in system reminders and the task involves repository analysis, architecture tracing, dependency tracing, symbol lookup, or locating implementation files, this is a BLOCKING REQUIREMENT: invoke \`${CODE_INDEX_SKILL_NAME}\` before doing broad Read/Grep/Glob or shell-based repo scanning
 - NEVER mention a skill without actually calling this tool
 - Do not invoke a skill that is already running
 - Do not use this tool for built-in CLI commands (like /help, /clear, etc.)

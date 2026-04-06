@@ -152,6 +152,12 @@ import { mergeAndFilterTools } from '../utils/toolPool.js';
 import { useMergedCommands } from '../hooks/useMergedCommands.js';
 import { useSkillsChange } from '../hooks/useSkillsChange.js';
 import { useManagePlugins } from '../hooks/useManagePlugins.js';
+import { buildCodeIndex } from '../indexing/build.js';
+import {
+  formatStartupIndexProgress,
+  formatStartupIndexSummary,
+  startupIndexEnabled,
+} from '../indexing/startupIndex.js';
 import { Messages } from '../components/Messages.js';
 import { TaskListV2 } from '../components/TaskListV2.js';
 import { TeammateViewHeader } from '../components/TeammateViewHeader.js';
@@ -258,6 +264,7 @@ import { usePluginAutoupdateNotification } from 'src/hooks/notifs/usePluginAutou
 import { performStartupChecks } from 'src/utils/plugins/performStartupChecks.js';
 import { UserTextMessage } from 'src/components/messages/UserTextMessage.js';
 import { AwsAuthStatusBox } from '../components/AwsAuthStatusBox.js';
+import { refreshCodeIndexSkillRuntime } from '../commands/index/refreshCodeIndexSkillRuntime.js';
 import { useRateLimitWarningNotification } from 'src/hooks/notifs/useRateLimitWarningNotification.js';
 import { useDeprecationWarningNotification } from 'src/hooks/notifs/useDeprecationWarningNotification.js';
 import { useNpmDeprecationNotification } from 'src/hooks/notifs/useNpmDeprecationNotification.js';
@@ -712,6 +719,11 @@ export function REPL({
   // v-for-editor render progress. Inline in the footer — notifications
   // render inside PromptInput which isn't mounted in transcript.
   const [editorStatus, setEditorStatus] = useState('');
+  const [startupIndexStatus, setStartupIndexStatus] = useState('');
+  const startupIndexStartedRef = useRef(false);
+  const startupIndexTimerRef = useRef<
+    ReturnType<typeof setTimeout> | undefined
+  >(undefined);
   // Incremented on transcript exit. Async v-render captures this at start;
   // each status write no-ops if stale (user left transcript mid-render —
   // the stable setState would otherwise stamp a ghost toast into the next
@@ -1233,6 +1245,91 @@ export function REPL({
     }
     setUserInputOnProcessingRaw(input);
   }, []);
+  useEffect(
+    () => () => {
+      clearTimeout(startupIndexTimerRef.current);
+    },
+    [],
+  );
+  useEffect(() => {
+    if (
+      startupIndexStartedRef.current ||
+      disabled ||
+      isRemoteSession ||
+      directConnectConfig ||
+      sshSession ||
+      isEnvTruthy(process.env.CLAUDE_CODE_SIMPLE) ||
+      !startupIndexEnabled()
+    ) {
+      return;
+    }
+
+    startupIndexStartedRef.current = true;
+    let cancelled = false;
+    const rootDir = getProjectRoot();
+    const outputDir = join(rootDir, '.code_index');
+
+    setMessages(prev => [
+      ...prev,
+      createSystemMessage(
+        `Generating startup code index for current project.\nRoot: ${rootDir}`,
+        'info',
+      ),
+    ]);
+    setStartupIndexStatus('Indexing project: starting…');
+
+    void (async () => {
+      try {
+        const result = await buildCodeIndex({
+          rootDir,
+          outputDir,
+          onProgress(progress) {
+            if (!cancelled) {
+              setStartupIndexStatus(formatStartupIndexProgress(progress));
+            }
+          },
+        });
+        await refreshCodeIndexSkillRuntime();
+        if (cancelled) {
+          return;
+        }
+
+        setMessages(prev => [
+          ...prev,
+          createSystemMessage(formatStartupIndexSummary(result), 'info'),
+        ]);
+        clearTimeout(startupIndexTimerRef.current);
+        startupIndexTimerRef.current = setTimeout(
+          () => setStartupIndexStatus(''),
+          4000,
+        );
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        const message = `Startup code index failed: ${errorMessage(error)}`;
+        setStartupIndexStatus(message);
+        setMessages(prev => [...prev, createSystemMessage(message, 'warning')]);
+        clearTimeout(startupIndexTimerRef.current);
+        startupIndexTimerRef.current = setTimeout(
+          () => setStartupIndexStatus(''),
+          6000,
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(startupIndexTimerRef.current);
+    };
+  }, [
+    directConnectConfig,
+    disabled,
+    isRemoteSession,
+    setMessages,
+    sshSession,
+  ]);
   // Fullscreen: track the unseen-divider position. dividerIndex changes
   // only ~twice/scroll-session (first scroll-away + repin). pillVisible
   // and stickyPrompt now live in FullscreenLayout — they subscribe to
@@ -4596,6 +4693,9 @@ export function REPL({
               {feature('BUDDY') && companionNarrow && isFullscreenEnvEnabled() && companionVisible ? <CompanionSprite /> : null}
               <Box flexDirection="column" flexGrow={1}>
                 {permissionStickyFooter}
+                {startupIndexStatus ? <Box width="100%">
+                      <Text dimColor>{startupIndexStatus}</Text>
+                    </Box> : null}
                 {/* Immediate local-jsx commands (/btw, /sandbox, /assistant,
                   /issue) render here, NOT inside scrollable. They stay mounted
                   while the main conversation streams behind them, so ScrollBox

@@ -64,6 +64,7 @@ const USE_POLLING = typeof Bun !== 'undefined'
 let watcher: FSWatcher | null = null
 let reloadTimer: ReturnType<typeof setTimeout> | null = null
 const pendingChangedPaths = new Set<string>()
+let watchedPathsKey = ''
 let initialized = false
 let disposed = false
 let dynamicSkillsCallbackRegistered = false
@@ -83,31 +84,77 @@ let testOverrides: {
  * Initialize file watching for skill directories
  */
 export async function initialize(): Promise<void> {
-  if (initialized || disposed) return
-  initialized = true
+  if (disposed) return
 
-  // Register callback for when dynamic skills are loaded (only once)
-  if (!dynamicSkillsCallbackRegistered) {
-    dynamicSkillsCallbackRegistered = true
-    onDynamicSkillsLoaded(() => {
-      // Clear memoization caches so new skills are picked up
-      // Note: we use clearCommandMemoizationCaches (not clearCommandsCache)
-      // because clearCommandsCache would call clearSkillCaches which
-      // wipes out the dynamic skills we just loaded
-      clearCommandMemoizationCaches()
-      // Notify listeners that skills changed
-      skillsChanged.emit()
+  if (!initialized) {
+    initialized = true
+
+    // Register callback for when dynamic skills are loaded (only once)
+    if (!dynamicSkillsCallbackRegistered) {
+      dynamicSkillsCallbackRegistered = true
+      onDynamicSkillsLoaded(() => {
+        // Clear memoization caches so new skills are picked up
+        // Note: we use clearCommandMemoizationCaches (not clearCommandsCache)
+        // because clearCommandsCache would call clearSkillCaches which
+        // wipes out the dynamic skills we just loaded
+        clearCommandMemoizationCaches()
+        // Notify listeners that skills changed
+        skillsChanged.emit()
+      })
+    }
+
+    // Register cleanup to properly dispose of the file watcher during graceful shutdown
+    unregisterCleanup = registerCleanup(async () => {
+      await dispose()
     })
   }
 
-  const paths = await getWatchablePaths()
-  if (paths.length === 0) return
+  await refreshWatchPaths()
+}
 
-  logForDebugging(
-    `Watching for changes in skill/command directories: ${paths.join(', ')}...`,
-  )
+/**
+ * Clean up file watcher
+ */
+export function dispose(): Promise<void> {
+  disposed = true
+  if (unregisterCleanup) {
+    unregisterCleanup()
+    unregisterCleanup = null
+  }
+  const closePromise = closeWatcher()
+  if (reloadTimer) {
+    clearTimeout(reloadTimer)
+    reloadTimer = null
+  }
+  pendingChangedPaths.clear()
+  skillsChanged.clear()
+  return closePromise
+}
 
-  watcher = chokidar.watch(paths, {
+/**
+ * Subscribe to skill changes
+ */
+export const subscribe = skillsChanged.subscribe
+
+async function closeWatcher(): Promise<void> {
+  const activeWatcher = watcher
+  watcher = null
+  watchedPathsKey = ''
+  if (!activeWatcher) {
+    return
+  }
+  await activeWatcher.close()
+}
+
+function getPathsKey(paths: readonly string[]): string {
+  return [...new Set(paths)]
+    .map(path => platformPath.resolve(path))
+    .sort()
+    .join('\n')
+}
+
+function createWatcher(paths: string[]): FSWatcher {
+  const nextWatcher = chokidar.watch(paths, {
     persistent: true,
     ignoreInitial: true,
     depth: 2, // Skills use skill-name/SKILL.md format
@@ -130,43 +177,33 @@ export async function initialize(): Promise<void> {
     atomic: true,
   })
 
-  watcher.on('add', handleChange)
-  watcher.on('change', handleChange)
-  watcher.on('unlink', handleChange)
-
-  // Register cleanup to properly dispose of the file watcher during graceful shutdown
-  unregisterCleanup = registerCleanup(async () => {
-    await dispose()
-  })
+  nextWatcher.on('add', handleChange)
+  nextWatcher.on('change', handleChange)
+  nextWatcher.on('unlink', handleChange)
+  return nextWatcher
 }
 
-/**
- * Clean up file watcher
- */
-export function dispose(): Promise<void> {
-  disposed = true
-  if (unregisterCleanup) {
-    unregisterCleanup()
-    unregisterCleanup = null
-  }
-  let closePromise: Promise<void> = Promise.resolve()
-  if (watcher) {
-    closePromise = watcher.close()
-    watcher = null
-  }
-  if (reloadTimer) {
-    clearTimeout(reloadTimer)
-    reloadTimer = null
-  }
-  pendingChangedPaths.clear()
-  skillsChanged.clear()
-  return closePromise
-}
+export async function refreshWatchPaths(): Promise<void> {
+  if (disposed) return
 
-/**
- * Subscribe to skill changes
- */
-export const subscribe = skillsChanged.subscribe
+  const paths = await getWatchablePaths()
+  const nextPathsKey = getPathsKey(paths)
+
+  if (nextPathsKey === watchedPathsKey) {
+    return
+  }
+
+  await closeWatcher()
+  if (paths.length === 0) {
+    return
+  }
+
+  logForDebugging(
+    `Watching for changes in skill/command directories: ${paths.join(', ')}...`,
+  )
+  watcher = createWatcher(paths)
+  watchedPathsKey = nextPathsKey
+}
 
 async function getWatchablePaths(): Promise<string[]> {
   const fs = getFsImplementation()
@@ -288,10 +325,7 @@ export async function resetForTesting(overrides?: {
   chokidarInterval?: number
 }): Promise<void> {
   // Clean up existing watcher if present to avoid resource leaks
-  if (watcher) {
-    await watcher.close()
-    watcher = null
-  }
+  await closeWatcher()
   if (reloadTimer) {
     clearTimeout(reloadTimer)
     reloadTimer = null
@@ -306,6 +340,7 @@ export async function resetForTesting(overrides?: {
 export const skillChangeDetector = {
   initialize,
   dispose,
+  refreshWatchPaths,
   subscribe,
   resetForTesting,
 }
