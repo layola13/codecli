@@ -62,9 +62,14 @@ describe('/compress', () => {
       expect(result.type).toBe('text')
       expect(result.value).toContain('Context compression complete.')
       expect(result.value).toContain('.claude/context/session_state.py')
+      expect(result.value).toContain('.claude/context/session_graph.py')
 
       const pythonState = await readFile(
         join(rootDir, '.claude', 'context', 'session_state.py'),
+        'utf8',
+      )
+      const graphState = await readFile(
+        join(rootDir, '.claude', 'context', 'session_graph.py'),
         'utf8',
       )
       const summaryMarkdown = await readFile(
@@ -73,6 +78,7 @@ describe('/compress', () => {
       )
       expect(pythonState).toContain('primary_goal')
       expect(pythonState).toContain('src/context/compression/runtime.ts')
+      expect(graphState).toContain('ConversationGraph')
       expect(summaryMarkdown).toContain('# Conversation Summary')
       expect(summaryMarkdown).toContain('我想修复压缩输出路径')
       expect(summaryMarkdown).toContain('I updated src/context/compression/runtime.ts to write under the project root.')

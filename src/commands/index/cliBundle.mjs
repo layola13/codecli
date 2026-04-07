@@ -462,7 +462,7 @@ function detectProgress(text, role, turn) {
   }
   return uniqueTaskUpdates(tasks);
 }
-var FILE_PATH_RE = /(?:^|\s|[`"'])((?:[\w\-./]+\/)?[\w\-]+\.(?:ts|tsx|js|jsx|py|rs|go|java|cpp|c|h|hpp|rb|php|swift|kt))(?:\s|[`"']|$|[,.:;])/gm;
+var FILE_PATH_RE = /(?:^|\s|[`"'(\[（])((?:[\w\-./]+\/)?[\w\-]+\.(?:ts|tsx|js|jsx|py|rs|go|java|cpp|c|h|hpp|rb|php|swift|kt))(?:\s|[`"')\]）]|$|[,.:;，。；！？])/gm;
 var LINE_REF_RE = /(?:(?:第|line|行|L)\s*(\d+)\s*(?:行|line)?(?:\s*(?:到|to|-)\s*(\d+))?)/gi;
 var AGENT_ACTION_PATTERNS = [
   [/(?:read|reading|读取?了?)\s+(?:file\s+)?[`'"]?([\w\-./]+\.[\w]+)/i, "read"],
@@ -630,6 +630,154 @@ class MasterExtractor {
       errorMemories: this.errorDetector.detect(cleanText, role, turn)
     };
   }
+}
+
+// src/context/compression/graph.ts
+var MAX_LINKS_PER_TURN = 6;
+var RELATION_WINDOW = 12;
+function summarizeContent(content) {
+  const flattened = stripCodeBlocks(content).replace(/\s+/g, " ").trim();
+  if (!flattened) {
+    return "empty turn";
+  }
+  const primaryClause = flattened.split(/(?:\r?\n|[。！？!?;；])/).map((part) => part.trim()).find(Boolean);
+  return escape((primaryClause || flattened).slice(0, 120));
+}
+function uniqueStrings(values) {
+  const seen = new Set;
+  const result = [];
+  for (const value of values) {
+    const trimmed = value.trim();
+    if (!trimmed || seen.has(trimmed))
+      continue;
+    seen.add(trimmed);
+    result.push(trimmed);
+  }
+  return result;
+}
+function decisionLabel(decision) {
+  if (decision.choice && decision.choice !== "[REJECTED]" && decision.choice !== "[REVERTED]") {
+    return `${decision.topic}:${decision.choice}`;
+  }
+  const fallback = decision.alternativesRejected[0] || decision.topic;
+  return `${decision.topic}:${fallback}`;
+}
+function normalizeForOverlap(value) {
+  return value.toLowerCase().replace(/[`'"]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+function sharedItems(current, previous) {
+  if (current.length === 0 || previous.length === 0) {
+    return [];
+  }
+  const previousIndex = new Map;
+  for (const value of previous) {
+    previousIndex.set(normalizeForOverlap(value), value);
+  }
+  const matches = current.map((value) => {
+    const normalized = normalizeForOverlap(value);
+    const exact = previousIndex.get(normalized);
+    if (exact)
+      return exact;
+    for (const [candidate, original] of previousIndex) {
+      if (!candidate || !normalized)
+        continue;
+      if (candidate.includes(normalized) || normalized.includes(candidate)) {
+        return original;
+      }
+    }
+    return null;
+  }).filter((value) => Boolean(value));
+  return uniqueStrings(matches);
+}
+function pushLink(links, seen, link) {
+  if (!link.note.trim())
+    return;
+  const key = `${link.kind}:${link.targetTurn}:${link.note}`;
+  if (seen.has(key))
+    return;
+  seen.add(key);
+  links.push(link);
+}
+function buildConversationTurnRecord(role, content, turn, signature, extraction, priorTurns) {
+  const summary = summarizeContent(content);
+  const referencedFiles = uniqueStrings(extraction.codeAnchors.map((anchor) => anchor.filePath));
+  const tasks = uniqueStrings(extraction.tasks.map((task) => task.description));
+  const constraints = uniqueStrings(extraction.constraints.map((constraint) => constraint.rule));
+  const decisions = uniqueStrings(extraction.decisions.map((decision) => decisionLabel(decision)));
+  const facts = uniqueStrings(extraction.factUpdates.map((fact) => `${fact.key}=${fact.value}`));
+  const links = [];
+  const seen = new Set;
+  const previousTurn = priorTurns.at(-1);
+  if (previousTurn) {
+    pushLink(links, seen, {
+      kind: role === "assistant" && previousTurn.role === "user" ? "assistant_response" : "continues",
+      targetTurn: previousTurn.turn,
+      note: previousTurn.summary
+    });
+  }
+  for (const candidate of priorTurns.slice(-RELATION_WINDOW).reverse()) {
+    if (links.length >= MAX_LINKS_PER_TURN)
+      break;
+    const sharedFiles = sharedItems(referencedFiles, candidate.referencedFiles);
+    if (sharedFiles.length > 0) {
+      pushLink(links, seen, {
+        kind: "shared_file",
+        targetTurn: candidate.turn,
+        note: sharedFiles.slice(0, 2).join(", ")
+      });
+    }
+    if (links.length >= MAX_LINKS_PER_TURN)
+      break;
+    const sharedTaskValues = sharedItems(tasks, candidate.tasks);
+    if (sharedTaskValues.length > 0) {
+      pushLink(links, seen, {
+        kind: "shared_task",
+        targetTurn: candidate.turn,
+        note: sharedTaskValues[0]
+      });
+    }
+    if (links.length >= MAX_LINKS_PER_TURN)
+      break;
+    const sharedConstraintValues = sharedItems(constraints, candidate.constraints);
+    if (sharedConstraintValues.length > 0) {
+      pushLink(links, seen, {
+        kind: "shared_constraint",
+        targetTurn: candidate.turn,
+        note: sharedConstraintValues[0]
+      });
+    }
+    if (links.length >= MAX_LINKS_PER_TURN)
+      break;
+    const sharedDecisionValues = sharedItems(decisions, candidate.decisions);
+    if (sharedDecisionValues.length > 0) {
+      pushLink(links, seen, {
+        kind: "shared_decision",
+        targetTurn: candidate.turn,
+        note: sharedDecisionValues[0]
+      });
+    }
+    if (links.length >= MAX_LINKS_PER_TURN)
+      break;
+    if (summary && candidate.summary && similarity(summary, candidate.summary) >= 0.22) {
+      pushLink(links, seen, {
+        kind: "same_topic",
+        targetTurn: candidate.turn,
+        note: candidate.summary
+      });
+    }
+  }
+  return {
+    turn,
+    role,
+    signature,
+    summary,
+    referencedFiles,
+    tasks,
+    constraints,
+    decisions,
+    facts,
+    links: links.slice(0, MAX_LINKS_PER_TURN)
+  };
 }
 
 // src/context/compression/merger.ts
@@ -908,7 +1056,8 @@ function createEmptySessionState() {
     decisions: [],
     constraints: [],
     tasks: [],
-    lastUpdatedTurn: 0
+    lastUpdatedTurn: 0,
+    conversationTurns: []
   };
 }
 class StateSerializer {
@@ -1150,6 +1299,69 @@ class StateSerializer {
     return lines.join(`
 `);
   }
+  serializeGraph(state) {
+    const lines = [];
+    const turns = state.conversationTurns || [];
+    lines.push("# session_graph.py  (auto-generated before conversation compaction)");
+    lines.push("# Turn-level relationship skeleton for the current conversation.");
+    lines.push("from __future__ import annotations");
+    lines.push("from typing import Dict, List");
+    lines.push("");
+    if (turns.length === 0) {
+      lines.push("class ConversationGraph:");
+      lines.push("    turns_total = 0");
+      lines.push("    last_turn = None");
+      lines.push("");
+      lines.push("def get_conversation_graph() -> ConversationGraph:");
+      lines.push("    return ConversationGraph");
+      lines.push("");
+      return lines.join(`
+`);
+    }
+    for (const turn of turns) {
+      const className = graphTurnClassName(turn);
+      lines.push(`class ${className}:`);
+      lines.push(`    # @origin conversation:turn:${turn.turn}`);
+      lines.push(`    turn = ${turn.turn}`);
+      lines.push(`    role = ${pyStr(turn.role)}`);
+      lines.push(`    signature = ${pyStr(turn.signature)}`);
+      lines.push(`    summary = ${pyStr(turn.summary)}`);
+      lines.push(`    files = ${pyList(turn.referencedFiles)}`);
+      lines.push(`    tasks = ${pyList(turn.tasks)}`);
+      lines.push(`    constraints = ${pyList(turn.constraints)}`);
+      lines.push(`    decisions = ${pyList(turn.decisions)}`);
+      lines.push(`    facts = ${pyList(turn.facts)}`);
+      lines.push("    links = [");
+      for (const link of turn.links) {
+        lines.push(`        ${pyStr(formatConversationLink(link))},`);
+      }
+      lines.push("    ]");
+      lines.push("");
+    }
+    lines.push("class ConversationFiles:");
+    const fileMap = buildConversationFileMap(turns);
+    if (fileMap.size === 0) {
+      lines.push("    ...");
+    } else {
+      for (const [filePath, refs] of fileMap) {
+        lines.push(`    ${anchorVarName(filePath)} = ${pyList(refs)}  # ${filePath}`);
+      }
+    }
+    lines.push("");
+    lines.push("class ConversationGraph:");
+    lines.push(`    turns_total = ${turns.length}`);
+    lines.push(`    last_turn = ${pyStr(turnRef(turns.at(-1).turn))}`);
+    for (const turn of turns) {
+      lines.push(`    ${turnRef(turn.turn)} = ${graphTurnClassName(turn)}`);
+    }
+    lines.push("    files = ConversationFiles");
+    lines.push("");
+    lines.push("def get_conversation_graph() -> ConversationGraph:");
+    lines.push("    return ConversationGraph");
+    lines.push("");
+    return lines.join(`
+`);
+  }
   async save(state, outputPath) {
     let content = this.serialize(state);
     let compressedChars = content.length;
@@ -1169,6 +1381,9 @@ class StateSerializer {
   }
   async saveMetrics(state, outputPath) {
     await atomicWrite(outputPath, this.serializeMetrics(state));
+  }
+  async saveGraph(state, outputPath) {
+    await atomicWrite(outputPath, this.serializeGraph(state));
   }
 }
 function decisionToPythonLine(d, indent = 8) {
@@ -1197,6 +1412,27 @@ function anchorVarName(filePath) {
     hash |= 0;
   }
   return `${toVarName(stem)}_${Math.abs(hash).toString(36).slice(0, 6)}`;
+}
+function graphTurnClassName(turn) {
+  return `Turn${String(turn.turn).padStart(4, "0")}_${turn.role === "assistant" ? "Assistant" : "User"}`;
+}
+function turnRef(turn) {
+  return `turn_${String(turn).padStart(4, "0")}`;
+}
+function formatConversationLink(link) {
+  return `${link.kind} -> ${turnRef(link.targetTurn)} (${link.note})`;
+}
+function buildConversationFileMap(turns) {
+  const map = new Map;
+  for (const turn of turns) {
+    for (const filePath of turn.referencedFiles) {
+      if (!map.has(filePath)) {
+        map.set(filePath, []);
+      }
+      map.get(filePath).push(turnRef(turn.turn));
+    }
+  }
+  return new Map(Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0])));
 }
 function anchorToPythonLine(a, indent = 8) {
   const padding = " ".repeat(indent);
@@ -1297,11 +1533,20 @@ class ContextCompressorEngine {
   get outputMetricsPath() {
     return path2.join(this.outputDir, "session_metrics.py");
   }
+  get outputGraphPath() {
+    return path2.join(this.outputDir, "session_graph.py");
+  }
   ingest(role, content, turn) {
     try {
       this.rawCharsIngested += content.length;
       const extraction = this.extractor.extract(content, role, turn, this.state);
+      const conversationTurns = this.state.conversationTurns || [];
+      const normalizedRole = role === "assistant" ? "assistant" : "user";
       this.state = this.merger.merge(this.state, extraction, turn);
+      this.state.conversationTurns = [
+        ...conversationTurns,
+        buildConversationTurnRecord(normalizedRole, content, turn, makeId("turn", `${role}:${content}`, turn), extraction, conversationTurns)
+      ];
       this.state.totalTurns = turn;
       this.state.lastTurnSignature = makeId("turn", `${role}:${content}`, turn);
       this.syncStateMetrics();
@@ -1328,6 +1573,7 @@ class ContextCompressorEngine {
       this.syncStateMetrics();
       await this.serializer.saveHistory(this.state, this.outputHistoryPath);
       await this.serializer.saveMetrics(this.state, this.outputMetricsPath);
+      await this.serializer.saveGraph(this.state, this.outputGraphPath);
       await atomicWrite(this.outputJsonPath, JSON.stringify(this.state, null, 2));
     } catch (e) {
       console.error("[Compressor] save failed:", e);
@@ -1368,6 +1614,7 @@ class ContextCompressorEngine {
       const jsonContent = await fs2.readFile(this.outputJsonPath, "utf-8");
       const parsed = JSON.parse(jsonContent);
       this.state = parsed;
+      this.state.conversationTurns = this.state.conversationTurns || [];
       this.sessionId = parsed.sessionId || this.sessionId;
       this.rawCharsIngested = parsed.rawCharsIngested || 0;
       this.syncStateMetrics();
@@ -1394,6 +1641,7 @@ class ContextCompressorEngine {
     this.state.sessionId = this.state.sessionId || this.sessionId;
     this.state.rawCharsIngested = this.rawCharsIngested;
     this.state.totalTurns = this.state.totalTurns || this.state.lastUpdatedTurn;
+    this.state.conversationTurns = this.state.conversationTurns || [];
   }
   _parsePythonState(content) {
     const goalMatch = content.match(/primary_goal\s*=\s*'(.+?)'/);
@@ -1646,6 +1894,7 @@ var call = async () => {
         `  ${engine.outputPythonPath}`,
         `  ${engine.outputHistoryPath}`,
         `  ${engine.outputMetricsPath}`,
+        `  ${engine.outputGraphPath}`,
         `  ${engine.outputJsonPath}`
       ].join(`
 `)
@@ -1678,6 +1927,7 @@ var call = async () => {
       `  ${engine.outputPythonPath}`,
       `  ${engine.outputHistoryPath}`,
       `  ${engine.outputMetricsPath}`,
+      `  ${engine.outputGraphPath}`,
       `  ${engine.outputJsonPath}`
     ].join(`
 `)
@@ -1811,6 +2061,7 @@ var USAGE = [
   "  .claude/context/session_state.py  — structured Python state",
   "  .claude/context/session_history.py — compact timeline archive",
   "  .claude/context/session_metrics.py — compression diagnostics",
+  "  .claude/context/session_graph.py — turn relationship skeleton map",
   "  .claude/context/session_state.json — full session state"
 ].join(`
 `);
@@ -1871,6 +2122,7 @@ var call2 = async (_args, context) => {
       `  ${engine.outputPythonPath}`,
       `  ${engine.outputHistoryPath}`,
       `  ${engine.outputMetricsPath}`,
+      `  ${engine.outputGraphPath}`,
       `  ${engine.outputJsonPath}`
     ].join(`
 `);
@@ -1945,6 +2197,7 @@ var DEFAULT_IGNORED_DIR_NAMES = new Set([
   ".vs",
   ".cache",
   ".code_index",
+  ".memory_index",
   ".history",
   ".summarizer",
   ".usernotice",
@@ -1984,7 +2237,7 @@ function normalizeIgnoredDirName(name) {
 }
 function isGeneratedIndexDirName(name) {
   const normalized = normalizeIgnoredDirName(name);
-  return normalized === ".code_index" || GENERATED_INDEX_DIR_PREFIXES.some((prefix) => normalized.startsWith(prefix));
+  return normalized === ".code_index" || normalized === ".memory_index" || GENERATED_INDEX_DIR_PREFIXES.some((prefix) => normalized.startsWith(prefix));
 }
 function normalizeParseWorkers(value) {
   if (value === undefined) {

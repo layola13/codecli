@@ -3,6 +3,7 @@ import chalk from 'chalk'
 import { markPostCompaction } from 'src/bootstrap/state.js'
 import { getSystemPrompt } from '../../constants/prompts.js'
 import { getSystemContext, getUserContext } from '../../context.js'
+import { startContextCompressionAgent } from '../../context/compression/runtime.js'
 import { getShortcutDisplay } from '../../keybindings/shortcutFormat.js'
 import { notifyCompaction } from '../../services/api/promptCacheBreakDetection.js'
 import {
@@ -50,6 +51,7 @@ export const call: LocalCommandCall = async (args, context) => {
   }
 
   const customInstructions = args.trim()
+  startContextCompressionAgent(messages)
 
   try {
     // Try session memory compaction first if no custom instructions

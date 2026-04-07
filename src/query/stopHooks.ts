@@ -52,10 +52,12 @@ import type { QuerySource } from '../constants/querySource.js'
 import { executeAutoDream } from '../services/autoDream/autoDream.js'
 import { executePromptSuggestion } from '../services/PromptSuggestion/promptSuggestion.js'
 import { isBareMode, isEnvDefinedFalsy } from '../utils/envUtils.js'
+import { getProjectRoot } from '../bootstrap/state.js'
 import {
   createCacheSafeParams,
   saveCacheSafeParams,
 } from '../utils/forkedAgent.js'
+import { queueAutoMemoryIndexBuild } from '../memoryIndex/autoMemoryIndex.js'
 
 type StopHookResult = {
   blockingErrors: Message[]
@@ -152,6 +154,7 @@ export async function* handleStopHooks(
       )
     }
     if (!toolUseContext.agentId) {
+      queueAutoMemoryIndexBuild(getProjectRoot())
       void executeAutoDream(stopHookContext, toolUseContext.appendSystemMessage)
     }
   }

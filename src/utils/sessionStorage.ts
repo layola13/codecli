@@ -7,6 +7,7 @@ import type { Dirent } from 'fs'
 import { closeSync, fstatSync, openSync, readSync } from 'fs'
 import {
   appendFile as fsAppendFile,
+  copyFile,
   open as fsOpen,
   mkdir,
   readdir,
@@ -81,6 +82,10 @@ import { parseJSONL } from './json.js'
 import { logError } from './log.js'
 import { extractTag, isCompactBoundaryMessage } from './messages.js'
 import { sanitizePath } from './path.js'
+import {
+  getProjectConversationBackupPath,
+  getProjectConversationMirrorPath,
+} from './projectConversationContext.js'
 import {
   extractJsonStringField,
   extractLastJsonStringField,
@@ -642,6 +647,63 @@ class Project {
     }
   }
 
+  private enqueueWriteWithProjectMirror(
+    filePath: string,
+    entry: Entry,
+    sessionId: UUID,
+  ): void {
+    void this.enqueueWrite(filePath, entry)
+
+    if (sessionId !== (getSessionId() as UUID)) {
+      return
+    }
+
+    const mirrorPath = getProjectConversationMirrorPath({
+      rootDir: getOriginalCwd(),
+      transcriptPath: filePath,
+    })
+    if (!mirrorPath || mirrorPath === filePath) {
+      return
+    }
+
+    void this.enqueueWrite(mirrorPath, entry)
+  }
+
+  private async mirrorFileHistorySnapshotToProjectContext(
+    snapshot: FileHistorySnapshot,
+    sessionId: UUID,
+  ): Promise<void> {
+    const trackedBackups = Object.values(snapshot.trackedFileBackups)
+    const rootDir = getOriginalCwd()
+
+    await Promise.all(
+      trackedBackups.map(async backup => {
+        if (!backup?.backupFileName) {
+          return
+        }
+
+        const sourcePath = join(
+          getClaudeConfigHomeDir(),
+          'file-history',
+          sessionId,
+          backup.backupFileName,
+        )
+        const targetPath = getProjectConversationBackupPath({
+          rootDir,
+          sessionId,
+          backupFileName: backup.backupFileName,
+        })
+
+        try {
+          await copyFile(sourcePath, targetPath)
+        } catch {
+          await mkdir(dirname(targetPath), { recursive: true, mode: 0o700 })
+          await copyFile(sourcePath, targetPath)
+        }
+      }),
+    )
+  }
+
   private async drainWriteQueue(): Promise<void> {
     for (const [filePath, queue] of this.writeQueues) {
       if (queue.length === 0) {
@@ -1086,6 +1148,7 @@ class Project {
     messageId: UUID,
     snapshot: FileHistorySnapshot,
     isSnapshotUpdate: boolean,
+    mirrorProjectContext: boolean = true,
   ) {
     return this.trackWrite(async () => {
       const fileHistoryMessage: FileHistorySnapshotMessage = {
@@ -1095,6 +1158,12 @@ class Project {
         isSnapshotUpdate,
       }
       await this.appendEntry(fileHistoryMessage)
+      if (mirrorProjectContext) {
+        void this.mirrorFileHistorySnapshotToProjectContext(
+          snapshot,
+          getSessionId() as UUID,
+        ).catch(logError)
+      }
     })
   }
 
@@ -1157,46 +1226,46 @@ class Project {
     // Only load current session messages if needed
     if (entry.type === 'summary') {
       // Summaries can always be appended
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else if (entry.type === 'custom-title') {
       // Custom titles can always be appended
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else if (entry.type === 'ai-title') {
       // AI titles can always be appended
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else if (entry.type === 'last-prompt') {
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else if (entry.type === 'task-summary') {
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else if (entry.type === 'tag') {
       // Tags can always be appended
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else if (entry.type === 'agent-name') {
       // Agent names can always be appended
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else if (entry.type === 'agent-color') {
       // Agent colors can always be appended
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else if (entry.type === 'agent-setting') {
       // Agent settings can always be appended
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else if (entry.type === 'pr-link') {
       // PR links can always be appended
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else if (entry.type === 'file-history-snapshot') {
       // File history snapshots can always be appended
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else if (entry.type === 'attribution-snapshot') {
       // Attribution snapshots can always be appended
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else if (entry.type === 'speculation-accept') {
       // Speculation accept entries can always be appended
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else if (entry.type === 'mode') {
       // Mode entries can always be appended
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else if (entry.type === 'worktree-state') {
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else if (entry.type === 'content-replacement') {
       // Content replacement records can always be appended. Subagent records
       // go to the sidechain file (for AgentTool resume); main-thread
@@ -1204,20 +1273,20 @@ class Project {
       const targetFile = entry.agentId
         ? getAgentTranscriptPath(entry.agentId)
         : sessionFile
-      void this.enqueueWrite(targetFile, entry)
+      this.enqueueWriteWithProjectMirror(targetFile, entry, sessionId)
     } else if (entry.type === 'marble-origami-commit') {
       // Always append. Commit order matters for restore (later commits may
       // reference earlier commits' summary messages), so these must be
       // written in the order received and read back sequentially.
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else if (entry.type === 'marble-origami-snapshot') {
       // Always append. Last-wins on restore — later entries supersede.
-      void this.enqueueWrite(sessionFile, entry)
+      this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
     } else {
       const messageSet = await getSessionMessages(sessionId)
       if (entry.type === 'queue-operation') {
         // Queue operations are always appended to the session file
-        void this.enqueueWrite(sessionFile, entry)
+        this.enqueueWriteWithProjectMirror(sessionFile, entry, sessionId)
       } else {
         // At this point, entry must be a TranscriptMessage (user/assistant/attachment/system)
         // All other entry types have been handled above
@@ -1242,7 +1311,7 @@ class Project {
         const isNewUuid = !messageSet.has(entry.uuid)
         if (isAgentSidechain || isNewUuid) {
           // Enqueue write — appendToFile handles ENOENT by creating directories
-          void this.enqueueWrite(targetFile, entry)
+          this.enqueueWriteWithProjectMirror(targetFile, entry, sessionId)
 
           if (!isAgentSidechain) {
             // messageSet is main-file-authoritative. Sidechain entries go to a
@@ -1477,11 +1546,15 @@ export async function recordFileHistorySnapshot(
   messageId: UUID,
   snapshot: FileHistorySnapshot,
   isSnapshotUpdate: boolean,
+  options?: {
+    mirrorProjectContext?: boolean
+  },
 ) {
   await getProject().insertFileHistorySnapshot(
     messageId,
     snapshot,
     isSnapshotUpdate,
+    options?.mirrorProjectContext ?? true,
   )
 }
 

@@ -1,0 +1,1 @@
+ Error: Judge mode already launches the verification agent automatically. Do not spawn it manually from the main thread.

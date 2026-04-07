@@ -82,6 +82,34 @@ export interface ErrorMemory {
   relatedFiles: string[];
 }
 
+export type ConversationLinkKind =
+  | "assistant_response"
+  | "continues"
+  | "shared_file"
+  | "shared_task"
+  | "shared_constraint"
+  | "shared_decision"
+  | "same_topic";
+
+export interface ConversationLink {
+  kind: ConversationLinkKind;
+  targetTurn: number;
+  note: string;
+}
+
+export interface ConversationTurnRecord {
+  turn: number;
+  role: "user" | "assistant";
+  signature: string;
+  summary: string;
+  referencedFiles: string[];
+  tasks: string[];
+  constraints: string[];
+  decisions: string[];
+  facts: string[];
+  links: ConversationLink[];
+}
+
 export interface SessionState {
   // 保留原有字段
   primaryGoal: string;
@@ -105,4 +133,5 @@ export interface SessionState {
   rawCharsIngested?: number;
   compressedChars?: number;
   lastTurnSignature?: string;
+  conversationTurns?: ConversationTurnRecord[];
 }

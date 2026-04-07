@@ -3729,12 +3729,22 @@ Read the team config to discover your teammates' names. Check the task list peri
       if (!attachment.content) {
         return []
       }
-      const codeIndexReminder = /\n?- code-index\b/.test(attachment.content)
-        ? 'If `code-index` is listed and the repository has a generated `.code_index`, this is a BLOCKING REQUIREMENT for repository analysis, dependency tracing, symbol lookup, and locating implementation files: invoke `code-index` before broad Read/Grep/Glob or shell-based repo scanning. Only skip this when the index is stale, insufficient, or the user explicitly asks for raw source inspection first.\n\n'
-        : ''
+      const reminders: string[] = []
+      if (/\n?- code-index\b/.test(attachment.content)) {
+        reminders.push(
+          'If `code-index` is listed and the repository has a generated `.code_index`, this is a BLOCKING REQUIREMENT for repository analysis, dependency tracing, symbol lookup, and locating implementation files: invoke `code-index` before broad Read/Grep/Glob or shell-based repo scanning. Only skip this when the index is stale, insufficient, or the user explicitly asks for raw source inspection first.',
+        )
+      }
+      if (/\n?- memory-index\b/.test(attachment.content)) {
+        reminders.push(
+          'If `memory-index` is listed and the project has a generated `.memory_index`, this is a BLOCKING REQUIREMENT for project history, previous user requests, plans, earlier code edits, or why code changed: invoke `memory-index` before reading raw transcript JSONL, plan files, or shell-scanning session history. `.claude/context/session_state.py`, `.claude/context/session_history.py`, `.claude/context/session_metrics.py`, and session-memory notes are lossy compact summaries, not the source of truth. Only skip this when the index is stale, insufficient, or the user explicitly asks for raw transcript inspection first.',
+        )
+      }
+      const skillReminderPrefix =
+        reminders.length > 0 ? `${reminders.join('\n\n')}\n\n` : ''
       return wrapMessagesInSystemReminder([
         createUserMessage({
-          content: `${codeIndexReminder}The following skills are available for use with the Skill tool:\n\n${attachment.content}`,
+          content: `${skillReminderPrefix}The following skills are available for use with the Skill tool:\n\n${attachment.content}`,
           isMeta: true,
         }),
       ])

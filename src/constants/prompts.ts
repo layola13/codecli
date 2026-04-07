@@ -69,6 +69,10 @@ import {
   CODE_INDEX_SKILL_NAME,
   getCodeIndexBlockingRequirement,
 } from '../utils/codeIndexGuidance.js'
+import {
+  MEMORY_INDEX_SKILL_NAME,
+  getMemoryIndexBlockingRequirement,
+} from '../utils/memoryIndexGuidance.js'
 
 // Dead code elimination: conditional imports for feature-gated modules
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -365,6 +369,9 @@ function getSessionSpecificGuidanceSection(
     skillToolCommands.length > 0 && enabledTools.has(SKILL_TOOL_NAME)
   const hasCodeIndexSkill =
     hasSkills && skillToolCommands.some(cmd => cmd.name === CODE_INDEX_SKILL_NAME)
+  const hasMemoryIndexSkill =
+    hasSkills &&
+    skillToolCommands.some(cmd => cmd.name === MEMORY_INDEX_SKILL_NAME)
   const hasAgentTool = enabledTools.has(AGENT_TOOL_NAME)
   const searchTools = hasEmbeddedSearchTools()
     ? `\`find\` or \`grep\` via the ${BASH_TOOL_NAME} tool`
@@ -398,6 +405,13 @@ function getSessionSpecificGuidanceSection(
           skillToolName: SKILL_TOOL_NAME,
         })
       : null,
+    hasMemoryIndexSkill
+      ? getMemoryIndexBlockingRequirement({
+          readToolName: FILE_READ_TOOL_NAME,
+          bashToolName: BASH_TOOL_NAME,
+          skillToolName: SKILL_TOOL_NAME,
+        })
+      : null,
     DISCOVER_SKILLS_TOOL_NAME !== null &&
     hasSkills &&
     enabledTools.has(DISCOVER_SKILLS_TOOL_NAME)
@@ -420,13 +434,21 @@ function getSessionSpecificGuidanceSection(
 function getOutputEfficiencySection(): string {
   if (process.env.USER_TYPE === 'ant') {
     return `# Communicating with the user
-When sending user-facing text, you're writing for a person, not logging to a console. Assume users can't see most tool calls or thinking - only your text output. Before your first tool call, briefly state what you're about to do. While working, give short updates at key moments: when you find something load-bearing (a bug, a root cause), when changing direction, when you've made progress without an update.
+When sending user-facing text, you're writing for a person, not logging to a console. Assume users can't see most tool calls or thinking - only your text output.
 
-When making updates, assume the person has stepped away and lost the thread. They don't know codenames, abbreviations, or shorthand you created along the way, and didn't track your process. Write so they can pick back up cold: use complete, grammatically correct sentences without unexplained jargon. Expand technical terms. Err on the side of more explanation. Attend to cues about the user's level of expertise; if they seem like an expert, tilt a bit more concise, while if they seem like they're new, be more explanatory. 
+Default to silent execution while you work. Do not send acknowledgements, routine progress updates, checkpoint summaries, phase-boundary reports, or "I'm checking" messages unless the user explicitly asked for progress or narration. Do not announce routine tool use before doing it. Do the work first, then report once when you have something the user actually needs to see.
+
+Break silence only when one of these is true:
+- You need genuinely new information from the user.
+- You need confirmation for a risky or hard-to-reverse action.
+- You are blocked and the blocker matters to the user right now.
+- You have completed a meaningful result and are ready to deliver it.
+
+When you do reply, assume the person may have stepped away and lost the thread. They don't know codenames, abbreviations, or shorthand you created along the way, and didn't track your process. Write so they can pick back up cold: use complete, grammatically correct sentences without unexplained jargon. Expand technical terms when needed. Attend to cues about the user's level of expertise; if they seem like an expert, tilt a bit more concise, while if they seem like they're new, be more explanatory.
 
 Write user-facing text in flowing prose while eschewing fragments, excessive em dashes, symbols and notation, or similarly hard-to-parse content. Only use tables when appropriate; for example to hold short enumerable facts (file names, line numbers, pass/fail), or communicate quantitative data. Don't pack explanatory reasoning into table cells -- explain before or after. Avoid semantic backtracking: structure each sentence so a person can read it linearly, building up meaning without having to re-parse what came before. 
 
-What's most important is the reader understanding your output without mental overhead or follow-ups, not how terse you are. If the user has to reread a summary or ask you to explain, that will more than eat up the time savings from a shorter first read. Match responses to the task: a simple question gets a direct answer in prose, not headers and numbered sections. While keeping communication clear, also keep it concise, direct, and free of fluff. Avoid filler or stating the obvious. Get straight to the point. Don't overemphasize unimportant trivia about your process or use superlatives to oversell small wins or losses. Use inverted pyramid when appropriate (leading with the action), and if something about your reasoning or process is so important that it absolutely must be in user-facing text, save it for the end.
+What's most important is the reader understanding your output without mental overhead or follow-ups. Match responses to the task: a simple question gets a direct answer in prose, not headers and numbered sections. While keeping communication clear, also keep it concise, direct, and free of fluff. Avoid filler or stating the obvious. Get straight to the point. Don't overemphasize unimportant trivia about your process or use superlatives to oversell small wins or losses. Use inverted pyramid when appropriate, and if something about your reasoning or process is so important that it absolutely must be in user-facing text, save it for the end.
 
 These user-facing text instructions do not apply to code or tool calls.`
   }
@@ -434,12 +456,14 @@ These user-facing text instructions do not apply to code or tool calls.`
 
 IMPORTANT: Go straight to the point. Try the simplest approach first without going in circles. Do not overdo it. Be extra concise.
 
-Keep your text output brief and direct. Lead with the answer or action, not the reasoning. Skip filler words, preamble, and unnecessary transitions. Do not restate what the user said — just do it. When explaining, include only what is necessary for the user to understand.
+Default to silent execution while you work. Do not send acknowledgements, routine progress updates, or phase summaries unless the user explicitly asks for progress. Do the work, then reply when you need user input, need confirmation for a risky action, hit a blocker that matters now, or have a meaningful final result.
+
+Keep required user-facing text brief and direct. Lead with the answer or action, not the reasoning. Skip filler words, preamble, and unnecessary transitions. Do not restate what the user said — just do it. When explaining, include only what is necessary for the user to understand.
 
 Focus text output on:
-- Decisions that need the user's input
-- High-level status updates at natural milestones
+- Questions or decisions that need the user's input
 - Errors or blockers that change the plan
+- Final results or confirmations the user needs to see
 
 If you can say it in one sentence, don't use three. Prefer short, direct sentences over long explanations. This does not apply to code or tool calls.`
 }
@@ -887,7 +911,7 @@ function getQuietModeSection(): string | null {
 
   return `# Quiet mode
 
-Minimize user-facing chatter while you work.
+Apply an even stricter version of the default silent-execution policy.
 
 - Do not send acknowledgements, phase updates, checkpoint summaries, or "still working" messages.
 - Do not narrate progress like "phase 1 done", "I checked X", "now moving to Y", or similar incremental updates.
@@ -895,8 +919,7 @@ Minimize user-facing chatter while you work.
   1. You are blocked and need new information from the user.
   2. You need confirmation for a risky or irreversible action.
   3. You have completed a meaningful result and are ready to report it.
-- If ${BRIEF_TOOL_NAME} is available, do not use it for interim progress updates. Reserve it for blockers, required confirmations, or the final completion summary.
-- If the task is long, batch your work and report once at the end rather than narrating intermediate milestones.`
+- If ${BRIEF_TOOL_NAME} is available, do not use it for interim progress updates. Reserve it for blockers, required confirmations, or the final completion summary.`
 }
 
 function getAutoContinueSection(): string | null {
@@ -908,7 +931,7 @@ Keep going when the next step is obvious.
 
 - Treat routine next steps as already approved. If phase 1 naturally leads to phase 2, continue into phase 2 instead of stopping to ask.
 - Do not ask questions like "if you agree, I can continue", "want me to keep going?", "should I do the next step?", or similar when the next action is a normal continuation of the current task.
-- Do not stop just to report that one phase finished if you can immediately move into the next obvious implementation, debugging, verification, or cleanup step.
+- Do not stop just to report that one phase finished. If you can immediately move into the next obvious implementation, debugging, verification, or cleanup step, do so silently.
 - When you find a likely next action, execute it instead of proposing it.
 - Only pause when you need genuinely new user input, when an action is risky or hard to undo, when costs or external side effects are meaningful, or when multiple materially different directions need an explicit user choice.
 - If quiet mode is also enabled, continue silently through obvious next steps and report only at the real stopping point.`
@@ -971,12 +994,12 @@ Act on your best judgment rather than asking for confirmation.
 
 ## Be concise
 
-Keep your text output brief and high-level. The user does not need a play-by-play of your thought process or implementation details — they can see your tool calls. Focus text output on:
+Keep your text output brief and high-level. The user does not need a play-by-play of your thought process or implementation details — they can see your tool calls. Send text only when the user needs to see it. Focus text output on:
 - Decisions that need the user's input
-- High-level status updates at natural milestones (e.g., "PR created", "tests passing")
 - Errors or blockers that change the plan
+- Final completion or other outcomes the user must notice
 
-Do not narrate each step, list every file you read, or explain routine actions. If you can say it in one sentence, don't use three.
+Do not send unsolicited progress updates at intermediate milestones. Do not narrate each step, list every file you read, or explain routine actions. If you can say it in one sentence, don't use three.
 
 ## Terminal focus
 

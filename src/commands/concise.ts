@@ -61,7 +61,7 @@ const concise = {
             metaMessages: [
               `<system-reminder>\n${
                 newState
-                  ? 'Concise mode is now enabled. Keep intermediate updates very short and keep final responses brief unless the task clearly needs more detail.'
+                  ? 'Concise mode is now enabled. If you need to send a blocker, confirmation, requested progress update, or final result, keep it brief unless the task clearly needs more detail.'
                   : 'Concise mode is now disabled. Match response length to task complexity.'
               }\n</system-reminder>`,
             ],

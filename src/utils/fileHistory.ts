@@ -1023,6 +1023,9 @@ export async function copyFileHistoryForResume(log: LogOption): Promise<void> {
             snapshot.messageId,
             snapshot,
             false, // isSnapshotUpdate
+            {
+              mirrorProjectContext: false,
+            },
           ).catch(_ => {
             logError(
               new Error(`FileHistory: Failed to record copy backup snapshot`),

@@ -14,8 +14,11 @@ import { runWithCwdOverride } from '../../utils/cwd.js'
 import {
   persistCompressedSessionState,
   readCompressedSessionStateForPrompt,
+  startContextCompressionAgent,
+  waitForContextCompressionAgent,
 } from './runtime.js'
 import { getConversationSummaryPath } from './summary.js'
+import { makeId } from './utils.js'
 
 function createUserMessage(content: string) {
   return {
@@ -108,7 +111,13 @@ describe('context compression runtime', () => {
             join(rootDir, '.claude', 'context', 'session_state.py'),
             'utf8',
           )
+          const graphState = await readFile(
+            join(rootDir, '.claude', 'context', 'session_graph.py'),
+            'utf8',
+          )
           expect(pythonState).toContain('src/http.ts')
+          expect(graphState).toContain('turn_0004')
+          expect(graphState).toContain('assistant_response')
           const summaryMarkdown = await readFile(
             getConversationSummaryPath(rootDir),
             'utf8',
@@ -183,6 +192,88 @@ describe('context compression runtime', () => {
           expect(promptState).toContain('primary_goal')
           expect(promptState).toContain('ship index dot')
         })
+      })
+    } finally {
+      await rm(rootDir, { recursive: true, force: true })
+    }
+  })
+
+  it('runs compression as a background agent so the main turn is not blocked', async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), 'claude-code-compression-runtime-'))
+
+    try {
+      await withProjectRoot(rootDir, async () => {
+        startContextCompressionAgent([
+          createUserMessage('我想把压缩前的关系图也写出来。'),
+          createAssistantMessage('I updated src/context/compression/serializer.ts and src/services/compact/compact.ts.'),
+        ])
+
+        await waitForContextCompressionAgent()
+
+        const graphState = await readFile(
+          join(rootDir, '.claude', 'context', 'session_graph.py'),
+          'utf8',
+        )
+
+        expect(graphState).toContain('src/context/compression/serializer.ts')
+        expect(graphState).toContain('src/services/compact/compact.ts')
+        expect(graphState).toContain('ConversationGraph')
+      })
+    } finally {
+      await rm(rootDir, { recursive: true, force: true })
+    }
+  })
+
+  it('rebuilds the graph for legacy state files that have no conversation turn skeleton', async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), 'claude-code-compression-runtime-'))
+
+    try {
+      await withProjectRoot(rootDir, async () => {
+        const contextDir = join(rootDir, '.claude', 'context')
+        await mkdir(contextDir, { recursive: true })
+
+        const lastTurnSignature = makeId(
+          'turn',
+          'assistant:I updated src/context/compression/runtime.ts.',
+          2,
+        )
+
+        await Bun.write(
+          join(contextDir, 'session_state.json'),
+          JSON.stringify(
+            {
+              sessionId: 'legacy',
+              primaryGoal: '修复旧状态升级',
+              decisions: [],
+              constraints: [],
+              tasks: [],
+              lastUpdatedTurn: 2,
+              totalTurns: 2,
+              rawCharsIngested: 42,
+              compressedChars: 21,
+              lastTurnSignature,
+            },
+            null,
+            2,
+          ),
+        )
+
+        await persistCompressedSessionState([
+          createUserMessage('我想修复旧状态升级。'),
+          createAssistantMessage('I updated src/context/compression/runtime.ts.'),
+        ])
+
+        const graphState = await readFile(
+          join(contextDir, 'session_graph.py'),
+          'utf8',
+        )
+        const updatedState = JSON.parse(
+          await readFile(join(contextDir, 'session_state.json'), 'utf8'),
+        ) as Record<string, unknown>
+
+        expect(graphState).toContain('class Turn0001_User:')
+        expect(Array.isArray(updatedState.conversationTurns)).toBe(true)
+        expect((updatedState.conversationTurns as unknown[]).length).toBe(2)
       })
     } finally {
       await rm(rootDir, { recursive: true, force: true })

@@ -58,6 +58,7 @@ export const DEFAULT_IGNORED_DIR_NAMES = new Set([
   '.vs',
   '.cache',
   '.code_index',
+  '.memory_index',
   '.history',
   '.summarizer',
   '.usernotice',
@@ -126,6 +127,7 @@ export function isGeneratedIndexDirName(name: string): boolean {
   const normalized = normalizeIgnoredDirName(name)
   return (
     normalized === '.code_index' ||
+    normalized === '.memory_index' ||
     GENERATED_INDEX_DIR_PREFIXES.some(prefix => normalized.startsWith(prefix))
   )
 }

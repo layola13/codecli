@@ -20,6 +20,7 @@ export const call: LocalCommandCall = async () => {
         `  ${engine.outputPythonPath}`,
         `  ${engine.outputHistoryPath}`,
         `  ${engine.outputMetricsPath}`,
+        `  ${engine.outputGraphPath}`,
         `  ${engine.outputJsonPath}`,
       ].join('\n'),
     }
@@ -56,6 +57,7 @@ export const call: LocalCommandCall = async () => {
       `  ${engine.outputPythonPath}`,
       `  ${engine.outputHistoryPath}`,
       `  ${engine.outputMetricsPath}`,
+      `  ${engine.outputGraphPath}`,
       `  ${engine.outputJsonPath}`,
     ].join('\n'),
   }

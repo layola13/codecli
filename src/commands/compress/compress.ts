@@ -15,6 +15,7 @@ const USAGE = [
   '  .claude/context/session_state.py  — structured Python state',
   '  .claude/context/session_history.py — compact timeline archive',
   '  .claude/context/session_metrics.py — compression diagnostics',
+  '  .claude/context/session_graph.py — turn relationship skeleton map',
   '  .claude/context/session_state.json — full session state',
 ].join('\n')
 
@@ -103,6 +104,7 @@ export const call: LocalCommandCall = async (_args, context) => {
       `  ${engine.outputPythonPath}`,
       `  ${engine.outputHistoryPath}`,
       `  ${engine.outputMetricsPath}`,
+      `  ${engine.outputGraphPath}`,
       `  ${engine.outputJsonPath}`,
     ].join('\n')
 

@@ -33,6 +33,8 @@ import installGitHubApp from './commands/install-github-app/index.js'
 import installSlackApp from './commands/install-slack-app/index.js'
 import breakCache from './commands/break-cache/index.js'
 import codeIndex from './commands/index/index.js'
+import memoryIndex from './commands/memory-index/index.js'
+import note, { noteNonInteractive } from './commands/note/index.js'
 import mcp from './commands/mcp/index.js'
 import mobile from './commands/mobile/index.js'
 import onboarding from './commands/onboarding/index.js'
@@ -290,6 +292,9 @@ const COMMANDS = memoize((): Command[] => [
   help,
   ide,
   codeIndex,
+  memoryIndex,
+  note,
+  noteNonInteractive,
   init,
   keybindings,
   installGitHubApp,

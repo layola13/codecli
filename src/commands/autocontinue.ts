@@ -75,8 +75,8 @@ const autocontinue = {
             metaMessages: [
               `<system-reminder>\n${
                 newState
-                  ? 'Autocontinue is now enabled. Treat obvious next steps as pre-approved, do not stop at phase boundaries just to ask whether to continue, and continue into the next routine implementation/debugging step automatically. When auto mode is available, autocontinue also authorizes switching into it for this session.'
-                  : 'Autocontinue is now disabled. It is okay to stop at major milestones again and ask before proceeding to the next phase.'
+                  ? 'Autocontinue is now enabled. Treat obvious next steps as pre-approved, do not stop at phase boundaries just to ask whether to continue, and continue into the next routine implementation/debugging step automatically without announcing each phase boundary. When auto mode is available, autocontinue also authorizes switching into it for this session.'
+                  : 'Autocontinue is now disabled. You may pause at major decision points again when you genuinely need user input, but do not stop just to announce phase completions.'
               }\n</system-reminder>`,
             ],
           },

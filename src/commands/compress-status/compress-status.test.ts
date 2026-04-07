@@ -46,6 +46,7 @@ describe('/compress-status', () => {
       expect(result.value).toContain('Run `/compress` first.')
       expect(result.value).toContain('.claude/context/session_history.py')
       expect(result.value).toContain('.claude/context/session_metrics.py')
+      expect(result.value).toContain('.claude/context/session_graph.py')
     } finally {
       await rm(rootDir, { recursive: true, force: true })
     }
@@ -77,6 +78,7 @@ describe('/compress-status', () => {
       expect(result.value).toContain(engine.outputPythonPath)
       expect(result.value).toContain(engine.outputHistoryPath)
       expect(result.value).toContain(engine.outputMetricsPath)
+      expect(result.value).toContain(engine.outputGraphPath)
       expect(result.value).toContain(engine.outputJsonPath)
     } finally {
       await rm(rootDir, { recursive: true, force: true })

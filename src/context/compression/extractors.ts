@@ -504,7 +504,7 @@ function detectProgress(
 // ── Code Anchor Detector ──────────────────────────────────────────────────
 
 const FILE_PATH_RE =
-  /(?:^|\s|[`"'])((?:[\w\-./]+\/)?[\w\-]+\.(?:ts|tsx|js|jsx|py|rs|go|java|cpp|c|h|hpp|rb|php|swift|kt))(?:\s|[`"']|$|[,.:;])/gm
+  /(?:^|\s|[`"'(\[（])((?:[\w\-./]+\/)?[\w\-]+\.(?:ts|tsx|js|jsx|py|rs|go|java|cpp|c|h|hpp|rb|php|swift|kt))(?:\s|[`"')\]）]|$|[,.:;，。；！？])/gm
 
 const LINE_REF_RE =
   /(?:(?:第|line|行|L)\s*(\d+)\s*(?:行|line)?(?:\s*(?:到|to|-)\s*(\d+))?)/gi

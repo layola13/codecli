@@ -26,6 +26,8 @@ export {
   FactConfidence,
   type CodeAnchor,
   type ErrorMemory,
+  type ConversationLink,
+  type ConversationTurnRecord,
 } from './models.js'
 
 // ── Extractors ───────────────────────────────────────────────────────────────
@@ -87,5 +89,8 @@ export {
 
 export {
   persistCompressedSessionState,
+  persistConversationGraphSnapshot,
+  startContextCompressionAgent,
+  waitForContextCompressionAgent,
   readCompressedSessionStateForPrompt,
 } from './runtime.js'

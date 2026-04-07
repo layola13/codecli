@@ -24,6 +24,7 @@ describe('ContextCompressorEngine', () => {
       const pythonText = await readFile(engine.outputPythonPath, 'utf8')
       const historyText = await readFile(engine.outputHistoryPath, 'utf8')
       const metricsText = await readFile(engine.outputMetricsPath, 'utf8')
+      const graphText = await readFile(engine.outputGraphPath, 'utf8')
       const jsonText = await readFile(engine.outputJsonPath, 'utf8')
       const jsonState = JSON.parse(jsonText) as Record<string, unknown>
 
@@ -32,6 +33,9 @@ describe('ContextCompressorEngine', () => {
       expect(historyText).toContain('src/auth.ts')
       expect(metricsText).toContain('SessionMetrics')
       expect(metricsText).toContain('compression_ratio')
+      expect(graphText).toContain('class Turn0001_User:')
+      expect(graphText).toContain('assistant_response')
+      expect(graphText).toContain('src/auth.ts')
       expect(pythonText).toContain('# Raw chars ingested:')
       expect(pythonText).toContain('# Compressed chars:')
       expect(jsonState.sessionId).toBe('session_test')
@@ -96,6 +100,7 @@ describe('ContextCompressorEngine', () => {
       await engine.save()
 
       const pythonText = await readFile(engine.outputPythonPath, 'utf8')
+      const graphText = await readFile(engine.outputGraphPath, 'utf8')
       const jsonText = await readFile(engine.outputJsonPath, 'utf8')
       const jsonState = JSON.parse(jsonText) as Record<string, unknown>
       const tasks = (jsonState.tasks ?? []) as Array<Record<string, unknown>>
@@ -131,6 +136,9 @@ describe('ContextCompressorEngine', () => {
       expect(pythonText).toContain("primary_goal = '项目的/index增加一个导出全局地图的dot'")
       expect(pythonText).toContain('2.1.88+local.3')
       expect(pythonText).not.toContain('.code_index/__index__.py')
+      expect(graphText).toContain('shared_file')
+      expect(graphText).toContain('class ConversationFiles:')
+      expect(graphText).toContain('src/indexing/indexWriter.ts')
     } finally {
       await rm(rootDir, { recursive: true, force: true })
     }

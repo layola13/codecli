@@ -1,0 +1,2002 @@
+{
+  "source": "heuristic",
+  "generatedAt": "2026-04-06T16:21:37.300Z",
+  "topics": [
+    {
+      "topicId": "topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "title": "Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先…",
+      "summary": "# Zig + Bun FFI 改造优先级 ## Summary - 采用 `Bun-only` 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先级是： - 文件索引与模糊搜索：[src/native-ts/file-index/index.ts](/home/vs…",
+      "status": "active",
+      "sessionIds": [
+        "019d5d8e-8de6-7df2-b6b8-f370f25c24b7"
+      ],
+      "filePaths": [
+        "src/indexing/build.test.ts",
+        "zig/index-parser/src/core.zig",
+        "src/indexing/build.ts",
+        "src/memoryIndex/build.ts",
+        "src/commands/index/indexCommand.ts",
+        "src/memoryIndex/memoryGraph.ts",
+        "src/commands/memory-index/memoryIndexCommand.ts",
+        "src/commands/memory-index/memoryIndexCommand.test.ts",
+        "src/memoryIndex/build.test.ts",
+        "src/memoryIndex/progress.ts"
+      ],
+      "planIds": [
+        "plan:019d5d8e-8de6-7df2-b6b8-f370f25c24b7:019d5d8f-47e3-7bc2-ac75-245ebd352128-plan:b8c0ff161a52"
+      ],
+      "memoryObjectIds": [
+        "memory:user_preference:548b4da7af93",
+        "memory:decision_rationale:a158a9abe1a7",
+        "memory:stable_constraint:fa5a56bd0329",
+        "memory:stable_constraint:89c1ff472125",
+        "memory:user_preference:6e29c2db4aa7",
+        "memory:user_preference:61ad99a9f9ca"
+      ],
+      "relatedTopics": []
+    },
+    {
+      "topicId": "topic:context_claude_code_note",
+      "title": "Context 用户希望在 Claude Code 源码基础上新增一个面向小说的 /note 功能，但这个功能的目标已经明确不是“生成分析报告”或“写自然语言总结”，而是**生成给大模型看的…",
+      "summary": "# Context 用户希望在 Claude Code 源码基础上新增一个面向小说的 `/note` 功能，但这个功能的目标已经明确不是“生成分析报告”或“写自然语言总结”，而是**生成给大模型看的小说地图工程**。 核心目标： - 输入小说（`txt / pdf / md`，默认 `txt`） - 支持单文件、单书…",
+      "status": "active",
+      "sessionIds": [
+        "39821801-2edf-4d5c-b802-8be8a397b71a"
+      ],
+      "filePaths": [
+        "/home/vscode/.claude/plans/ticklish-imagining-meadow.md",
+        "demo/word2vec/split-novels-by-chapter.mjs"
+      ],
+      "planIds": [
+        "plan:39821801-2edf-4d5c-b802-8be8a397b71a:5b39be79-c0a7-4bcd-823e-2ccee8f68282:df7977d2e1a9",
+        "plan:39821801-2edf-4d5c-b802-8be8a397b71a:31df2955-eb41-4c8c-9ac4-0fac105b9d2d:a82ea98ea78f",
+        "plan:39821801-2edf-4d5c-b802-8be8a397b71a:13cbbe81-e850-4367-bbdf-9bc5a94f5238:a96e92d3c5d0"
+      ],
+      "memoryObjectIds": [
+        "memory:decision_rationale:18ded10a89ec",
+        "memory:decision_rationale:f38282090caa",
+        "memory:stable_constraint:e68d24d62e82",
+        "memory:stable_constraint:71e154c7a388",
+        "memory:decision_rationale:bef6a8ebf868",
+        "memory:user_preference:6ed950239d1b"
+      ],
+      "relatedTopics": []
+    },
+    {
+      "topicId": "topic:a50f8a2ad9ec",
+      "title": "写回文档",
+      "summary": "写回文档",
+      "status": "active",
+      "sessionIds": [
+        "257dbf5f-1dab-40ef-92f8-ead2e76c50aa"
+      ],
+      "filePaths": [
+        "todo/memoryIndex-长期记忆系统评估.md"
+      ],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedTopics": []
+    },
+    {
+      "topicId": "topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "title": "Autoallow + Autocontinue 模式 ## Summary - 保留原来的 autoallow 方案，并扩展一个独立的 autocontinue 模式。 - autoall…",
+      "summary": "# Autoallow + Autocontinue 模式 ## Summary - 保留原来的 `autoallow` 方案，并扩展一个独立的 `autocontinue` 模式。 - `autoallow` 解决“出现执行期阻塞对话时，不要让我做选择”，规则是自动走第一个可接受选项。 - `autocontinu…",
+      "status": "active",
+      "sessionIds": [
+        "019d5cf0-1e91-7162-9410-ecc8db581d05"
+      ],
+      "filePaths": [
+        "src/constants/prompts.ts",
+        "src/main.tsx",
+        "src/commands/autoallow.ts",
+        "src/commands/autocontinue.ts",
+        "src/components/CustomSelect/select.tsx",
+        "src/components/CustomSelect/autoSelect.test.ts",
+        "src/utils/toggleState.test.ts",
+        "src/components/mcp/ElicitationDialog.tsx",
+        "src/components/permissions/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.tsx",
+        "src/components/permissions/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+        "src/components/CostThresholdDialog.tsx"
+      ],
+      "planIds": [
+        "plan:019d5cf0-1e91-7162-9410-ecc8db581d05:019d5cf1-3b7e-7573-81b0-d9acf1bb4130-plan:266a71521fbf",
+        "plan:019d5cf0-1e91-7162-9410-ecc8db581d05:019d5cfe-a7c5-7503-a951-a6466a79a33b-plan:37322a570d3a"
+      ],
+      "memoryObjectIds": [
+        "memory:stable_constraint:3f085d5a982a",
+        "memory:user_preference:3399339fe1a5",
+        "memory:decision_rationale:d0d4c443b1e3",
+        "memory:decision_rationale:6cbfe02592e3",
+        "memory:decision_rationale:0e9b6d194ff4",
+        "memory:decision_rationale:7086ebcaff87"
+      ],
+      "relatedTopics": [
+        {
+          "topicId": "topic:claudenative_preview_ant_200k_1m",
+          "reason": "shared files or durable memory"
+        },
+        {
+          "topicId": "topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+          "reason": "shared files or durable memory"
+        }
+      ]
+    },
+    {
+      "topicId": "topic:context_agent_tool_result_missing_due_to_interna",
+      "title": "Context 修复本地异步 agent 在已成功启动并完成工作后，主线程偶发显示 [Tool result missing due to internal error] 的问题。现有线索表…",
+      "summary": "# Context 修复本地异步 agent 在已成功启动并完成工作后，主线程偶发显示 `[Tool result missing due to internal error]` 的问题。现有线索表明，这不是仓库、git 或 agent 启动失败，而是结果返回阶段的问题，尤其更容易出现在较大的写代码型 agent 任…",
+      "status": "active",
+      "sessionIds": [
+        "89afb6ee-0166-48ea-9900-e1a53b085a23"
+      ],
+      "filePaths": [
+        "/home/vscode/.claude/plans/ancient-percolating-cookie.md"
+      ],
+      "planIds": [
+        "plan:89afb6ee-0166-48ea-9900-e1a53b085a23:e2ddccbf-44ea-41f6-a2db-3978cbe40774:2f31f3736e52"
+      ],
+      "memoryObjectIds": [
+        "memory:superseded_decision:76d050d00ce1",
+        "memory:decision_rationale:68a2923343eb",
+        "memory:decision_rationale:df3fc2313c28",
+        "memory:decision_rationale:818afbeae6b6"
+      ],
+      "relatedTopics": []
+    },
+    {
+      "topicId": "topic:claudenative_preview_ant_200k_1m",
+      "title": "新任务，看看claudenative preview \"ant\"整个分支，为什么到达200K上下文不会压缩，是不是写死1M上下文了",
+      "summary": "新任务，看看claudenative preview \"ant\"整个分支，为什么到达200K上下文不会压缩，是不是写死1M上下文了？",
+      "status": "active",
+      "sessionIds": [
+        "019d57a0-aa9b-7b20-aa9a-7322a9305662"
+      ],
+      "filePaths": [
+        "src/judge/autoJudge.ts",
+        "src/constants/prompts.ts",
+        "src/query.ts",
+        "src/tools/TaskUpdateTool/TaskUpdateTool.ts",
+        "src/tools/TodoWriteTool/TodoWriteTool.ts",
+        "src/tools/AgentTool/AgentTool.tsx"
+      ],
+      "planIds": [],
+      "memoryObjectIds": [
+        "memory:user_preference:469d13754c55",
+        "memory:stable_constraint:61047b47b1be",
+        "memory:decision_rationale:a8712a5f2e6f",
+        "memory:stable_constraint:ef68e9174eb6",
+        "memory:decision_rationale:ed24b1c17888",
+        "memory:stable_constraint:25374f26a052"
+      ],
+      "relatedTopics": [
+        {
+          "topicId": "topic:autoallow_autocontinue_summary_autoallow_autocon",
+          "reason": "shared files or durable memory"
+        },
+        {
+          "topicId": "topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+          "reason": "shared files or durable memory"
+        }
+      ]
+    },
+    {
+      "topicId": "topic:you_are_verifying_whether_the_following_task_has",
+      "title": "You are verifying whether the following task has been correctly completed. === Original Task ==…",
+      "summary": "You are verifying whether the following task has been correctly completed. === Original Task === 在demo/文件夹写一个简单的JS排序算法，要编译验证 === Conversation Summary === ### T…",
+      "status": "active",
+      "sessionIds": [
+        "25256e08-2d31-403f-a92c-773eee0ad2d1",
+        "a0782a58-d1b3-4cdc-882d-076f2d84a787",
+        "3ee728ab-e89b-43f1-af73-a2ca0a78aaaf",
+        "cee42579-5740-4474-8cfd-d32cbb851ff0"
+      ],
+      "filePaths": [],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedTopics": []
+    },
+    {
+      "topicId": "topic:verify_that_the_file_home_vscode_projects_claude",
+      "title": "Verify that the file /home/vscode/projects/claudecode/package/claude-code-2.1.88/demo/observer.…",
+      "summary": "Verify that the file /home/vscode/projects/claudecode/package/claude-code-2.1.88/demo/observer.js exists, contains a valid JavaScript implementation of a desig…",
+      "status": "active",
+      "sessionIds": [
+        "45810dcb-ffcc-485b-83c2-aaba460604e0"
+      ],
+      "filePaths": [],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedTopics": []
+    },
+    {
+      "topicId": "topic:verify_the_command_pattern_implementation_in_the",
+      "title": "Verify the Command pattern implementation in the demo/ folder. Original task: 在demo/文件夹里面用ts实现一…",
+      "summary": "Verify the Command pattern implementation in the demo/ folder. Original task: 在demo/文件夹里面用ts实现一个设计模式：CMD模式，支持历史操作，包括前进，后退 (Implement Command design pattern in …",
+      "status": "active",
+      "sessionIds": [
+        "802221a7-eb18-4285-8ba2-788a702b8f3e"
+      ],
+      "filePaths": [],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedTopics": []
+    },
+    {
+      "topicId": "topic:b72fd97e5a89",
+      "title": "不要看计划书，计划书可能还没有更新，你按照我的意见改",
+      "summary": "不要看计划书，计划书可能还没有更新，你按照我的意见改",
+      "status": "active",
+      "sessionIds": [
+        "d9109c26-7a4c-4336-b7a9-52b8c92586e2"
+      ],
+      "filePaths": [],
+      "planIds": [],
+      "memoryObjectIds": [
+        "memory:stable_constraint:4ffbd13e5850",
+        "memory:stable_constraint:0b7e3d94016f"
+      ],
+      "relatedTopics": []
+    },
+    {
+      "topicId": "topic:verify_the_bubble_sort_implementation_at_home_vs",
+      "title": "Verify the bubble sort implementation at /home/vscode/projects/claudecode/package/claude-code-2…",
+      "summary": "Verify the bubble sort implementation at /home/vscode/projects/claudecode/package/claude-code-2.1.88/demo/bubblesort.js Requirements: 1. It should be a valid J…",
+      "status": "active",
+      "sessionIds": [
+        "34050167-4637-4b89-82a0-a849a3249275"
+      ],
+      "filePaths": [],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedTopics": []
+    },
+    {
+      "topicId": "topic:debug",
+      "title": "debug",
+      "summary": "/debug",
+      "status": "active",
+      "sessionIds": [
+        "0e7a8230-ebeb-4e56-99b7-bf37e8c069d1"
+      ],
+      "filePaths": [
+        "demo/redblack.js",
+        "demo/sort.js"
+      ],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedTopics": []
+    },
+    {
+      "topicId": "topic:verify_that_the_zig_sort_implementation_in_home_",
+      "title": "Verify that the Zig sort implementation in /home/vscode/projects/claudecode/package/claude-code…",
+      "summary": "Verify that the Zig sort implementation in /home/vscode/projects/claudecode/package/claude-code-2.1.88/demo/sort.zig works correctly. Original task: \"用zig在demo…",
+      "status": "active",
+      "sessionIds": [
+        "42888d16-0f95-48de-8d82-1aa0d2f7d9e1"
+      ],
+      "filePaths": [],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedTopics": []
+    },
+    {
+      "topicId": "topic:demo_zig",
+      "title": "在demo/ 用zig实现红黑树排序算法",
+      "summary": "❯ 在demo/ 用zig实现红黑树排序算法",
+      "status": "active",
+      "sessionIds": [
+        "45fe8ca5-a8b1-4a90-844a-28f5ca540dc1"
+      ],
+      "filePaths": [
+        "demo/redblack.zig"
+      ],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedTopics": []
+    },
+    {
+      "topicId": "topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+      "title": "这样，在你改之前是有效的 你看看这里是否哪里导致问题 git abf390e72aade22092738e3ea92f2f9eb7538770",
+      "summary": "这样，在你改之前是有效的 你看看这里是否哪里导致问题 git abf390e72aade22092738e3ea92f2f9eb7538770",
+      "status": "active",
+      "sessionIds": [
+        "019d5730-8b1f-7b20-9c85-cf7bce826194"
+      ],
+      "filePaths": [
+        "src/commands/judge.ts",
+        "src/components/MessageRow.tsx",
+        "src/query.ts",
+        "src/components/Messages.tsx",
+        "src/components/PromptInput/PromptInputModeIndicator.tsx",
+        "src/replLauncher.tsx",
+        "src/main.tsx",
+        "src/state/onChangeAppState.ts"
+      ],
+      "planIds": [],
+      "memoryObjectIds": [
+        "memory:stable_constraint:2d174ad5927d"
+      ],
+      "relatedTopics": [
+        {
+          "topicId": "topic:autoallow_autocontinue_summary_autoallow_autocon",
+          "reason": "shared files or durable memory"
+        },
+        {
+          "topicId": "topic:claudenative_preview_ant_200k_1m",
+          "reason": "shared files or durable memory"
+        }
+      ]
+    }
+  ],
+  "sessions": [
+    {
+      "sessionId": "019d5d8e-8de6-7df2-b6b8-f370f25c24b7",
+      "title": "同意，禁止清单模式，毫无意义",
+      "summary": "# Zig + Bun FFI 改造优先级 ## Summary - 采用 `Bun-only` 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先级是： - 文件索引与模糊搜索：[src/native-ts/file-index/index.ts](/home/vs…",
+      "topicIds": [
+        "topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi"
+      ],
+      "filePaths": [
+        "src/indexing/build.test.ts",
+        "zig/index-parser/src/core.zig",
+        "src/indexing/build.ts",
+        "src/memoryIndex/build.ts",
+        "src/commands/index/indexCommand.ts",
+        "src/memoryIndex/memoryGraph.ts",
+        "src/commands/memory-index/memoryIndexCommand.ts",
+        "src/commands/memory-index/memoryIndexCommand.test.ts"
+      ],
+      "planIds": [
+        "plan:019d5d8e-8de6-7df2-b6b8-f370f25c24b7:019d5d8f-47e3-7bc2-ac75-245ebd352128-plan:b8c0ff161a52"
+      ],
+      "memoryObjectIds": [
+        "memory:user_preference:548b4da7af93",
+        "memory:decision_rationale:a158a9abe1a7",
+        "memory:stable_constraint:fa5a56bd0329",
+        "memory:stable_constraint:89c1ff472125",
+        "memory:user_preference:6e29c2db4aa7",
+        "memory:user_preference:61ad99a9f9ca"
+      ],
+      "relatedSessions": [
+        {
+          "sessionId": "30a599d8-2e2c-4c6f-8ad5-3d26080379cb",
+          "reason": "previous session"
+        }
+      ]
+    },
+    {
+      "sessionId": "39821801-2edf-4d5c-b802-8be8a397b71a",
+      "title": "好像漏了，应该是用claude code 内部的agent分析得到骨架，而不是靠程序批量生成，这点要补充",
+      "summary": "# Context 用户希望在 Claude Code 源码基础上新增一个面向小说的 `/note` 功能，但这个功能的目标已经明确不是“生成分析报告”或“写自然语言总结”，而是**生成给大模型看的小说地图工程**。 核心目标： - 输入小说（`txt / pdf / md`，默认 `txt`） - 支持单文件、单书…",
+      "topicIds": [
+        "topic:context_claude_code_note"
+      ],
+      "filePaths": [
+        "/home/vscode/.claude/plans/ticklish-imagining-meadow.md",
+        "demo/word2vec/split-novels-by-chapter.mjs"
+      ],
+      "planIds": [
+        "plan:39821801-2edf-4d5c-b802-8be8a397b71a:5b39be79-c0a7-4bcd-823e-2ccee8f68282:df7977d2e1a9",
+        "plan:39821801-2edf-4d5c-b802-8be8a397b71a:31df2955-eb41-4c8c-9ac4-0fac105b9d2d:a82ea98ea78f",
+        "plan:39821801-2edf-4d5c-b802-8be8a397b71a:13cbbe81-e850-4367-bbdf-9bc5a94f5238:a96e92d3c5d0"
+      ],
+      "memoryObjectIds": [
+        "memory:decision_rationale:18ded10a89ec",
+        "memory:decision_rationale:f38282090caa",
+        "memory:stable_constraint:e68d24d62e82",
+        "memory:stable_constraint:71e154c7a388",
+        "memory:decision_rationale:bef6a8ebf868",
+        "memory:user_preference:6ed950239d1b"
+      ],
+      "relatedSessions": [
+        {
+          "sessionId": "257dbf5f-1dab-40ef-92f8-ead2e76c50aa",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "30a599d8-2e2c-4c6f-8ad5-3d26080379cb",
+          "reason": "next session"
+        }
+      ]
+    },
+    {
+      "sessionId": "257dbf5f-1dab-40ef-92f8-ead2e76c50aa",
+      "title": "写回文档",
+      "summary": "写回文档",
+      "topicIds": [
+        "topic:a50f8a2ad9ec"
+      ],
+      "filePaths": [
+        "todo/memoryIndex-长期记忆系统评估.md"
+      ],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedSessions": [
+        {
+          "sessionId": "019d6234-f271-70c1-936e-2e0df22d71f6",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "39821801-2edf-4d5c-b802-8be8a397b71a",
+          "reason": "next session"
+        }
+      ]
+    },
+    {
+      "sessionId": "019d5cf0-1e91-7162-9410-ecc8db581d05",
+      "title": "编译到dist/了吗",
+      "summary": "# Autoallow + Autocontinue 模式 ## Summary - 保留原来的 `autoallow` 方案，并扩展一个独立的 `autocontinue` 模式。 - `autoallow` 解决“出现执行期阻塞对话时，不要让我做选择”，规则是自动走第一个可接受选项。 - `autocontinu…",
+      "topicIds": [
+        "topic:autoallow_autocontinue_summary_autoallow_autocon"
+      ],
+      "filePaths": [
+        "src/constants/prompts.ts",
+        "src/main.tsx",
+        "src/commands/autoallow.ts",
+        "src/commands/autocontinue.ts",
+        "src/components/CustomSelect/select.tsx",
+        "src/components/CustomSelect/autoSelect.test.ts",
+        "src/utils/toggleState.test.ts",
+        "src/components/mcp/ElicitationDialog.tsx"
+      ],
+      "planIds": [
+        "plan:019d5cf0-1e91-7162-9410-ecc8db581d05:019d5cf1-3b7e-7573-81b0-d9acf1bb4130-plan:266a71521fbf",
+        "plan:019d5cf0-1e91-7162-9410-ecc8db581d05:019d5cfe-a7c5-7503-a951-a6466a79a33b-plan:37322a570d3a"
+      ],
+      "memoryObjectIds": [
+        "memory:stable_constraint:3f085d5a982a",
+        "memory:user_preference:3399339fe1a5",
+        "memory:decision_rationale:d0d4c443b1e3",
+        "memory:decision_rationale:6cbfe02592e3",
+        "memory:decision_rationale:0e9b6d194ff4",
+        "memory:decision_rationale:7086ebcaff87"
+      ],
+      "relatedSessions": [
+        {
+          "sessionId": "5c823e32-5d91-4d54-be7c-6a1f441095f5",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "472e0c8f-567f-4f1e-b74c-7c813e2386fa",
+          "reason": "next session"
+        }
+      ]
+    },
+    {
+      "sessionId": "89afb6ee-0166-48ea-9900-e1a53b085a23",
+      "title": "不是这个工程的问题，是上游大模型的问题，你评估上游大模型要如何才能支持并行agent,给我一份详细的文档",
+      "summary": "# Context 修复本地异步 agent 在已成功启动并完成工作后，主线程偶发显示 `[Tool result missing due to internal error]` 的问题。现有线索表明，这不是仓库、git 或 agent 启动失败，而是结果返回阶段的问题，尤其更容易出现在较大的写代码型 agent 任…",
+      "topicIds": [
+        "topic:context_agent_tool_result_missing_due_to_interna"
+      ],
+      "filePaths": [
+        "/home/vscode/.claude/plans/ancient-percolating-cookie.md"
+      ],
+      "planIds": [
+        "plan:89afb6ee-0166-48ea-9900-e1a53b085a23:e2ddccbf-44ea-41f6-a2db-3978cbe40774:2f31f3736e52"
+      ],
+      "memoryObjectIds": [
+        "memory:superseded_decision:76d050d00ce1",
+        "memory:decision_rationale:68a2923343eb",
+        "memory:decision_rationale:df3fc2313c28",
+        "memory:decision_rationale:818afbeae6b6"
+      ],
+      "relatedSessions": [
+        {
+          "sessionId": "019d57a0-aa9b-7b20-aa9a-7322a9305662",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "5c823e32-5d91-4d54-be7c-6a1f441095f5",
+          "reason": "next session"
+        }
+      ]
+    },
+    {
+      "sessionId": "019d57a0-aa9b-7b20-aa9a-7322a9305662",
+      "title": "新任务，看看claudenative preview \"ant\"整个分支，为什么到达200K上下文不会压缩，是不是写死1M上下文了",
+      "summary": "新任务，看看claudenative preview \"ant\"整个分支，为什么到达200K上下文不会压缩，是不是写死1M上下文了？",
+      "topicIds": [
+        "topic:claudenative_preview_ant_200k_1m"
+      ],
+      "filePaths": [
+        "src/judge/autoJudge.ts",
+        "src/constants/prompts.ts",
+        "src/query.ts",
+        "src/tools/TaskUpdateTool/TaskUpdateTool.ts",
+        "src/tools/TodoWriteTool/TodoWriteTool.ts",
+        "src/tools/AgentTool/AgentTool.tsx"
+      ],
+      "planIds": [],
+      "memoryObjectIds": [
+        "memory:user_preference:469d13754c55",
+        "memory:stable_constraint:61047b47b1be",
+        "memory:decision_rationale:a8712a5f2e6f",
+        "memory:stable_constraint:ef68e9174eb6",
+        "memory:decision_rationale:ed24b1c17888",
+        "memory:stable_constraint:25374f26a052"
+      ],
+      "relatedSessions": [
+        {
+          "sessionId": "470cce1c-8b0e-4ea6-a34f-d20490a35ca2",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "89afb6ee-0166-48ea-9900-e1a53b085a23",
+          "reason": "next session"
+        }
+      ]
+    },
+    {
+      "sessionId": "25256e08-2d31-403f-a92c-773eee0ad2d1",
+      "title": "You are verifying whether the following task has been correctly completed. === Original Task ==…",
+      "summary": "You are verifying whether the following task has been correctly completed. === Original Task === 在demo/文件夹写一个简单的JS排序算法，要编译验证 === Conversation Summary === ### T…",
+      "topicIds": [
+        "topic:you_are_verifying_whether_the_following_task_has"
+      ],
+      "filePaths": [],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedSessions": [
+        {
+          "sessionId": "a0782a58-d1b3-4cdc-882d-076f2d84a787",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "0123c058-1625-42e5-b85b-42fca3ede241",
+          "reason": "next session"
+        }
+      ]
+    },
+    {
+      "sessionId": "a0782a58-d1b3-4cdc-882d-076f2d84a787",
+      "title": "You are verifying whether the following task has been correctly completed. === Original Task ==…",
+      "summary": "You are verifying whether the following task has been correctly completed. === Original Task === 在demo/文件夹写一个简单的JS排序算法，要编译验证 === Conversation Summary === ### T…",
+      "topicIds": [
+        "topic:you_are_verifying_whether_the_following_task_has"
+      ],
+      "filePaths": [],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedSessions": [
+        {
+          "sessionId": "e47568ab-8a00-4938-adcf-a6e1f079ff5f",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "25256e08-2d31-403f-a92c-773eee0ad2d1",
+          "reason": "next session"
+        }
+      ]
+    },
+    {
+      "sessionId": "3ee728ab-e89b-43f1-af73-a2ca0a78aaaf",
+      "title": "You are verifying whether the following task has been correctly completed. === Original Task ==…",
+      "summary": "You are verifying whether the following task has been correctly completed. === Original Task === 在demo/文件夹写一个简单的JS排序算法，要编译验证 === Conversation Summary === ### T…",
+      "topicIds": [
+        "topic:you_are_verifying_whether_the_following_task_has"
+      ],
+      "filePaths": [],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedSessions": [
+        {
+          "sessionId": "13d41f26-2b3b-4e9d-8232-c3889bae742d",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "e47568ab-8a00-4938-adcf-a6e1f079ff5f",
+          "reason": "next session"
+        }
+      ]
+    },
+    {
+      "sessionId": "cee42579-5740-4474-8cfd-d32cbb851ff0",
+      "title": "You are verifying whether the following task has been correctly completed. === Original Task ==…",
+      "summary": "You are verifying whether the following task has been correctly completed. === Original Task === demo/文件夹下用js 实现一个简单的设计模式， === Conversation Summary === ### Tur…",
+      "topicIds": [
+        "topic:you_are_verifying_whether_the_following_task_has"
+      ],
+      "filePaths": [],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedSessions": [
+        {
+          "sessionId": "45810dcb-ffcc-485b-83c2-aaba460604e0",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "707fb568-c00a-40bc-9dcc-c3c3d65fb4e6",
+          "reason": "next session"
+        }
+      ]
+    },
+    {
+      "sessionId": "45810dcb-ffcc-485b-83c2-aaba460604e0",
+      "title": "Verify that the file /home/vscode/projects/claudecode/package/claude-code-2.1.88/demo/observer.…",
+      "summary": "Verify that the file /home/vscode/projects/claudecode/package/claude-code-2.1.88/demo/observer.js exists, contains a valid JavaScript implementation of a desig…",
+      "topicIds": [
+        "topic:verify_that_the_file_home_vscode_projects_claude"
+      ],
+      "filePaths": [],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedSessions": [
+        {
+          "sessionId": "802221a7-eb18-4285-8ba2-788a702b8f3e",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "cee42579-5740-4474-8cfd-d32cbb851ff0",
+          "reason": "next session"
+        }
+      ]
+    },
+    {
+      "sessionId": "802221a7-eb18-4285-8ba2-788a702b8f3e",
+      "title": "Verify the Command pattern implementation in the demo/ folder. Original task: 在demo/文件夹里面用ts实现一…",
+      "summary": "Verify the Command pattern implementation in the demo/ folder. Original task: 在demo/文件夹里面用ts实现一个设计模式：CMD模式，支持历史操作，包括前进，后退 (Implement Command design pattern in …",
+      "topicIds": [
+        "topic:verify_the_command_pattern_implementation_in_the"
+      ],
+      "filePaths": [],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedSessions": [
+        {
+          "sessionId": "e29f6501-b10b-4aa5-8263-d887a4ad4fe8",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "45810dcb-ffcc-485b-83c2-aaba460604e0",
+          "reason": "next session"
+        }
+      ]
+    },
+    {
+      "sessionId": "d9109c26-7a4c-4336-b7a9-52b8c92586e2",
+      "title": "不要看计划书，计划书可能还没有更新，你按照我的意见改",
+      "summary": "不要看计划书，计划书可能还没有更新，你按照我的意见改",
+      "topicIds": [
+        "topic:b72fd97e5a89"
+      ],
+      "filePaths": [],
+      "planIds": [],
+      "memoryObjectIds": [
+        "memory:stable_constraint:4ffbd13e5850",
+        "memory:stable_constraint:0b7e3d94016f"
+      ],
+      "relatedSessions": [
+        {
+          "sessionId": "2dd74c4b-c102-4cdb-b5af-a575f9a61efd",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "019d581b-fb94-7f70-999e-838541a1a4c0",
+          "reason": "next session"
+        }
+      ]
+    },
+    {
+      "sessionId": "34050167-4637-4b89-82a0-a849a3249275",
+      "title": "Verify the bubble sort implementation at /home/vscode/projects/claudecode/package/claude-code-2…",
+      "summary": "Verify the bubble sort implementation at /home/vscode/projects/claudecode/package/claude-code-2.1.88/demo/bubblesort.js Requirements: 1. It should be a valid J…",
+      "topicIds": [
+        "topic:verify_the_bubble_sort_implementation_at_home_vs"
+      ],
+      "filePaths": [],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedSessions": [
+        {
+          "sessionId": "0e7a8230-ebeb-4e56-99b7-bf37e8c069d1",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "32678326-1137-47db-bed2-0c778edbd4a6",
+          "reason": "next session"
+        }
+      ]
+    },
+    {
+      "sessionId": "0e7a8230-ebeb-4e56-99b7-bf37e8c069d1",
+      "title": "debug",
+      "summary": "/debug",
+      "topicIds": [
+        "topic:debug"
+      ],
+      "filePaths": [
+        "demo/redblack.js",
+        "demo/sort.js"
+      ],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedSessions": [
+        {
+          "sessionId": "42888d16-0f95-48de-8d82-1aa0d2f7d9e1",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "34050167-4637-4b89-82a0-a849a3249275",
+          "reason": "next session"
+        }
+      ]
+    },
+    {
+      "sessionId": "42888d16-0f95-48de-8d82-1aa0d2f7d9e1",
+      "title": "Verify that the Zig sort implementation in /home/vscode/projects/claudecode/package/claude-code…",
+      "summary": "Verify that the Zig sort implementation in /home/vscode/projects/claudecode/package/claude-code-2.1.88/demo/sort.zig works correctly. Original task: \"用zig在demo…",
+      "topicIds": [
+        "topic:verify_that_the_zig_sort_implementation_in_home_"
+      ],
+      "filePaths": [],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedSessions": [
+        {
+          "sessionId": "45fe8ca5-a8b1-4a90-844a-28f5ca540dc1",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "0e7a8230-ebeb-4e56-99b7-bf37e8c069d1",
+          "reason": "next session"
+        }
+      ]
+    },
+    {
+      "sessionId": "45fe8ca5-a8b1-4a90-844a-28f5ca540dc1",
+      "title": "在demo/ 用zig实现红黑树排序算法",
+      "summary": "❯ 在demo/ 用zig实现红黑树排序算法",
+      "topicIds": [
+        "topic:demo_zig"
+      ],
+      "filePaths": [
+        "demo/redblack.zig"
+      ],
+      "planIds": [],
+      "memoryObjectIds": [],
+      "relatedSessions": [
+        {
+          "sessionId": "a96b405a-5ee7-41d6-b30d-f6c3e911a2be",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "42888d16-0f95-48de-8d82-1aa0d2f7d9e1",
+          "reason": "next session"
+        }
+      ]
+    },
+    {
+      "sessionId": "019d5730-8b1f-7b20-9c85-cf7bce826194",
+      "title": "这样，在你改之前是有效的 你看看这里是否哪里导致问题 git abf390e72aade22092738e3ea92f2f9eb7538770",
+      "summary": "这样，在你改之前是有效的 你看看这里是否哪里导致问题 git abf390e72aade22092738e3ea92f2f9eb7538770",
+      "topicIds": [
+        "topic:git_abf390e72aade22092738e3ea92f2f9eb7538770"
+      ],
+      "filePaths": [
+        "src/commands/judge.ts",
+        "src/components/MessageRow.tsx",
+        "src/query.ts",
+        "src/components/Messages.tsx",
+        "src/components/PromptInput/PromptInputModeIndicator.tsx",
+        "src/replLauncher.tsx",
+        "src/main.tsx",
+        "src/state/onChangeAppState.ts"
+      ],
+      "planIds": [],
+      "memoryObjectIds": [
+        "memory:stable_constraint:2d174ad5927d"
+      ],
+      "relatedSessions": [
+        {
+          "sessionId": "778e60eb-5d26-4000-8cc7-50b655c737cc",
+          "reason": "previous session"
+        },
+        {
+          "sessionId": "a96b405a-5ee7-41d6-b30d-f6c3e911a2be",
+          "reason": "next session"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "src/indexing/build.test.ts",
+      "role": "Implements or supports Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先…",
+      "topicIds": [
+        "topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi"
+      ],
+      "sessionIds": [
+        "019d5d8e-8de6-7df2-b6b8-f370f25c24b7"
+      ],
+      "planIds": [
+        "plan:019d4409-2c8e-7f30-85c9-37ee78d9e4d7:019d441f-596a-7fc1-8911-a2887c981b01-plan:9f029bc89ee1",
+        "plan:019d4bff-9f2a-7330-85c7-5c404bc727aa:019d4c01-5536-74d1-a021-894e7856b017-plan:0d232d5ef226",
+        "plan:019d4bff-9f2a-7330-85c7-5c404bc727aa:019d4c0b-a9eb-7e02-9c89-dec4c66e8a77-plan:e4aeee244794",
+        "plan:019d4bff-9f2a-7330-85c7-5c404bc727aa:019d4d67-c179-7231-b016-04bf371f15ac-plan:9c4d6c643013",
+        "plan:019d5d8e-8de6-7df2-b6b8-f370f25c24b7:019d5d8f-47e3-7bc2-ac75-245ebd352128-plan:b8c0ff161a52"
+      ],
+      "memoryObjectIds": [
+        "memory:user_preference:548b4da7af93",
+        "memory:decision_rationale:a158a9abe1a7",
+        "memory:stable_constraint:fa5a56bd0329",
+        "memory:stable_constraint:89c1ff472125",
+        "memory:user_preference:6e29c2db4aa7",
+        "memory:user_preference:61ad99a9f9ca"
+      ],
+      "recentRanges": [
+        {
+          "sessionId": "019d5d8e-8de6-7df2-b6b8-f370f25c24b7",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d4bff-9f2a-7330-85c7-5c404bc727aa",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d4409-2c8e-7f30-85c9-37ee78d9e4d7",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d4409-2c8e-7f30-85c9-37ee78d9e4d7",
+          "status": "added",
+          "lineRanges": ""
+        }
+      ]
+    },
+    {
+      "path": "zig/index-parser/src/core.zig",
+      "role": "Implements or supports Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先…",
+      "topicIds": [
+        "topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi"
+      ],
+      "sessionIds": [
+        "019d5d8e-8de6-7df2-b6b8-f370f25c24b7"
+      ],
+      "planIds": [
+        "plan:019d5d8e-8de6-7df2-b6b8-f370f25c24b7:019d5d8f-47e3-7bc2-ac75-245ebd352128-plan:b8c0ff161a52"
+      ],
+      "memoryObjectIds": [
+        "memory:user_preference:548b4da7af93",
+        "memory:decision_rationale:a158a9abe1a7",
+        "memory:stable_constraint:fa5a56bd0329",
+        "memory:stable_constraint:89c1ff472125",
+        "memory:user_preference:6e29c2db4aa7",
+        "memory:user_preference:61ad99a9f9ca"
+      ],
+      "recentRanges": [
+        {
+          "sessionId": "019d5d8e-8de6-7df2-b6b8-f370f25c24b7",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d5d8e-8de6-7df2-b6b8-f370f25c24b7",
+          "status": "added",
+          "lineRanges": ""
+        }
+      ]
+    },
+    {
+      "path": "src/indexing/build.ts",
+      "role": "Implements or supports Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先…",
+      "topicIds": [
+        "topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi"
+      ],
+      "sessionIds": [
+        "019d5d8e-8de6-7df2-b6b8-f370f25c24b7"
+      ],
+      "planIds": [
+        "plan:019d4409-2c8e-7f30-85c9-37ee78d9e4d7:019d441f-596a-7fc1-8911-a2887c981b01-plan:9f029bc89ee1",
+        "plan:019d5d8e-8de6-7df2-b6b8-f370f25c24b7:019d5d8f-47e3-7bc2-ac75-245ebd352128-plan:b8c0ff161a52"
+      ],
+      "memoryObjectIds": [
+        "memory:user_preference:548b4da7af93",
+        "memory:decision_rationale:a158a9abe1a7",
+        "memory:stable_constraint:fa5a56bd0329",
+        "memory:stable_constraint:89c1ff472125",
+        "memory:user_preference:6e29c2db4aa7",
+        "memory:user_preference:61ad99a9f9ca"
+      ],
+      "recentRanges": [
+        {
+          "sessionId": "019d5d8e-8de6-7df2-b6b8-f370f25c24b7",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d4409-2c8e-7f30-85c9-37ee78d9e4d7",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d4409-2c8e-7f30-85c9-37ee78d9e4d7",
+          "status": "added",
+          "lineRanges": ""
+        }
+      ]
+    },
+    {
+      "path": "src/memoryIndex/build.ts",
+      "role": "Implements or supports Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先…",
+      "topicIds": [
+        "topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi"
+      ],
+      "sessionIds": [
+        "019d5d8e-8de6-7df2-b6b8-f370f25c24b7"
+      ],
+      "planIds": [
+        "plan:019d5d8e-8de6-7df2-b6b8-f370f25c24b7:019d5d8f-47e3-7bc2-ac75-245ebd352128-plan:b8c0ff161a52"
+      ],
+      "memoryObjectIds": [
+        "memory:user_preference:548b4da7af93",
+        "memory:decision_rationale:a158a9abe1a7",
+        "memory:stable_constraint:fa5a56bd0329",
+        "memory:stable_constraint:89c1ff472125",
+        "memory:user_preference:6e29c2db4aa7",
+        "memory:user_preference:61ad99a9f9ca"
+      ],
+      "recentRanges": [
+        {
+          "sessionId": "019d5d8e-8de6-7df2-b6b8-f370f25c24b7",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d5d8e-8de6-7df2-b6b8-f370f25c24b7",
+          "status": "added",
+          "lineRanges": ""
+        }
+      ]
+    },
+    {
+      "path": "src/commands/index/indexCommand.ts",
+      "role": "Implements or supports Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先…",
+      "topicIds": [
+        "topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi"
+      ],
+      "sessionIds": [
+        "019d5d8e-8de6-7df2-b6b8-f370f25c24b7"
+      ],
+      "planIds": [
+        "plan:019d4409-2c8e-7f30-85c9-37ee78d9e4d7:019d441f-596a-7fc1-8911-a2887c981b01-plan:9f029bc89ee1",
+        "plan:019d4bff-9f2a-7330-85c7-5c404bc727aa:019d4c01-5536-74d1-a021-894e7856b017-plan:0d232d5ef226",
+        "plan:019d4bff-9f2a-7330-85c7-5c404bc727aa:019d4c0b-a9eb-7e02-9c89-dec4c66e8a77-plan:e4aeee244794",
+        "plan:019d4bff-9f2a-7330-85c7-5c404bc727aa:019d4d67-c179-7231-b016-04bf371f15ac-plan:9c4d6c643013",
+        "plan:019d5d8e-8de6-7df2-b6b8-f370f25c24b7:019d5d8f-47e3-7bc2-ac75-245ebd352128-plan:b8c0ff161a52"
+      ],
+      "memoryObjectIds": [
+        "memory:user_preference:548b4da7af93",
+        "memory:decision_rationale:a158a9abe1a7",
+        "memory:stable_constraint:fa5a56bd0329",
+        "memory:stable_constraint:89c1ff472125",
+        "memory:user_preference:6e29c2db4aa7",
+        "memory:user_preference:61ad99a9f9ca"
+      ],
+      "recentRanges": [
+        {
+          "sessionId": "019d5d8e-8de6-7df2-b6b8-f370f25c24b7",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d4bff-9f2a-7330-85c7-5c404bc727aa",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d4409-2c8e-7f30-85c9-37ee78d9e4d7",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d4409-2c8e-7f30-85c9-37ee78d9e4d7",
+          "status": "added",
+          "lineRanges": ""
+        }
+      ]
+    },
+    {
+      "path": "src/memoryIndex/build.test.ts",
+      "role": "Implements or supports Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先…",
+      "topicIds": [
+        "topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi"
+      ],
+      "sessionIds": [
+        "019d5d8e-8de6-7df2-b6b8-f370f25c24b7"
+      ],
+      "planIds": [
+        "plan:019d5d8e-8de6-7df2-b6b8-f370f25c24b7:019d5d8f-47e3-7bc2-ac75-245ebd352128-plan:b8c0ff161a52"
+      ],
+      "memoryObjectIds": [],
+      "recentRanges": [
+        {
+          "sessionId": "019d5d8e-8de6-7df2-b6b8-f370f25c24b7",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d5d8e-8de6-7df2-b6b8-f370f25c24b7",
+          "status": "added",
+          "lineRanges": ""
+        }
+      ]
+    },
+    {
+      "path": "src/commands/memory-index/memoryIndexCommand.ts",
+      "role": "Implements or supports Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先…",
+      "topicIds": [
+        "topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi"
+      ],
+      "sessionIds": [
+        "019d5d8e-8de6-7df2-b6b8-f370f25c24b7"
+      ],
+      "planIds": [
+        "plan:019d5d8e-8de6-7df2-b6b8-f370f25c24b7:019d5d8f-47e3-7bc2-ac75-245ebd352128-plan:b8c0ff161a52"
+      ],
+      "memoryObjectIds": [],
+      "recentRanges": [
+        {
+          "sessionId": "019d5d8e-8de6-7df2-b6b8-f370f25c24b7",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d5d8e-8de6-7df2-b6b8-f370f25c24b7",
+          "status": "added",
+          "lineRanges": ""
+        }
+      ]
+    },
+    {
+      "path": "src/constants/prompts.ts",
+      "role": "Implements or supports Autoallow + Autocontinue 模式 ## Summary - 保留原来的 autoallow 方案，并扩展一个独立的 autocontinue 模式。 - autoall…",
+      "topicIds": [
+        "topic:autoallow_autocontinue_summary_autoallow_autocon",
+        "topic:claudenative_preview_ant_200k_1m"
+      ],
+      "sessionIds": [
+        "019d57a0-aa9b-7b20-aa9a-7322a9305662",
+        "019d5cf0-1e91-7162-9410-ecc8db581d05",
+        "019d5d8e-8de6-7df2-b6b8-f370f25c24b7"
+      ],
+      "planIds": [
+        "plan:019d4bff-9f2a-7330-85c7-5c404bc727aa:019d4c01-5536-74d1-a021-894e7856b017-plan:0d232d5ef226",
+        "plan:019d4bff-9f2a-7330-85c7-5c404bc727aa:019d4c0b-a9eb-7e02-9c89-dec4c66e8a77-plan:e4aeee244794",
+        "plan:019d4bff-9f2a-7330-85c7-5c404bc727aa:019d4d67-c179-7231-b016-04bf371f15ac-plan:9c4d6c643013",
+        "plan:019d4d75-e181-7da3-886f-8dd032b518f4:019d4d76-2283-7a90-837c-51a0e8f727c8-plan:43a42e3ae977",
+        "plan:019d5cf0-1e91-7162-9410-ecc8db581d05:019d5cf1-3b7e-7573-81b0-d9acf1bb4130-plan:266a71521fbf",
+        "plan:019d5cf0-1e91-7162-9410-ecc8db581d05:019d5cfe-a7c5-7503-a951-a6466a79a33b-plan:37322a570d3a"
+      ],
+      "memoryObjectIds": [
+        "memory:stable_constraint:3f085d5a982a",
+        "memory:user_preference:3399339fe1a5",
+        "memory:decision_rationale:d0d4c443b1e3",
+        "memory:decision_rationale:6cbfe02592e3",
+        "memory:decision_rationale:0e9b6d194ff4",
+        "memory:decision_rationale:7086ebcaff87"
+      ],
+      "recentRanges": [
+        {
+          "sessionId": "019d5d8e-8de6-7df2-b6b8-f370f25c24b7",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d5cf0-1e91-7162-9410-ecc8db581d05",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d57a0-aa9b-7b20-aa9a-7322a9305662",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d4d75-e181-7da3-886f-8dd032b518f4",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d4dab-7d59-7380-a4f4-05d83c062c56",
+          "status": "modified",
+          "lineRanges": ""
+        }
+      ]
+    },
+    {
+      "path": "src/main.tsx",
+      "role": "Implements or supports Autoallow + Autocontinue 模式 ## Summary - 保留原来的 autoallow 方案，并扩展一个独立的 autocontinue 模式。 - autoall…",
+      "topicIds": [
+        "topic:autoallow_autocontinue_summary_autoallow_autocon",
+        "topic:git_abf390e72aade22092738e3ea92f2f9eb7538770"
+      ],
+      "sessionIds": [
+        "019d5730-8b1f-7b20-9c85-cf7bce826194",
+        "019d5cf0-1e91-7162-9410-ecc8db581d05"
+      ],
+      "planIds": [
+        "plan:019d4bff-9f2a-7330-85c7-5c404bc727aa:019d4c01-5536-74d1-a021-894e7856b017-plan:0d232d5ef226",
+        "plan:019d4bff-9f2a-7330-85c7-5c404bc727aa:019d4c0b-a9eb-7e02-9c89-dec4c66e8a77-plan:e4aeee244794",
+        "plan:019d4bff-9f2a-7330-85c7-5c404bc727aa:019d4d67-c179-7231-b016-04bf371f15ac-plan:9c4d6c643013",
+        "plan:019d4d75-e181-7da3-886f-8dd032b518f4:019d4d76-2283-7a90-837c-51a0e8f727c8-plan:43a42e3ae977",
+        "plan:019d5cf0-1e91-7162-9410-ecc8db581d05:019d5cf1-3b7e-7573-81b0-d9acf1bb4130-plan:266a71521fbf",
+        "plan:019d5cf0-1e91-7162-9410-ecc8db581d05:019d5cfe-a7c5-7503-a951-a6466a79a33b-plan:37322a570d3a"
+      ],
+      "memoryObjectIds": [
+        "memory:stable_constraint:3f085d5a982a",
+        "memory:user_preference:3399339fe1a5",
+        "memory:decision_rationale:d0d4c443b1e3",
+        "memory:decision_rationale:6cbfe02592e3",
+        "memory:decision_rationale:0e9b6d194ff4",
+        "memory:decision_rationale:7086ebcaff87"
+      ],
+      "recentRanges": [
+        {
+          "sessionId": "019d5cf0-1e91-7162-9410-ecc8db581d05",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d5730-8b1f-7b20-9c85-cf7bce826194",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d4d75-e181-7da3-886f-8dd032b518f4",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "019d4bff-9f2a-7330-85c7-5c404bc727aa",
+          "status": "modified",
+          "lineRanges": ""
+        },
+        {
+          "sessionId": "307d661c-6d48-4a37-96ef-228292efc994",
+          "status": "added",
+          "lineRanges": "L1::L4684"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "source": "session:019d5d8e-8de6-7df2-b6b8-f370f25c24b7",
+      "target": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "kind": "drives",
+      "reason": "019d5d8e-8de6-7df2-b6b8-f370f25c24b7 drives Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先…"
+    },
+    {
+      "source": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "target": "file:src/indexing/build.test.ts",
+      "kind": "implemented_by",
+      "reason": "src/indexing/build.test.ts implements Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先…"
+    },
+    {
+      "source": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "target": "file:zig/index-parser/src/core.zig",
+      "kind": "implemented_by",
+      "reason": "zig/index-parser/src/core.zig implements Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先…"
+    },
+    {
+      "source": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "target": "file:src/indexing/build.ts",
+      "kind": "implemented_by",
+      "reason": "src/indexing/build.ts implements Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先…"
+    },
+    {
+      "source": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "target": "file:src/memoryIndex/build.ts",
+      "kind": "implemented_by",
+      "reason": "src/memoryIndex/build.ts implements Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先…"
+    },
+    {
+      "source": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "target": "file:src/commands/index/indexCommand.ts",
+      "kind": "implemented_by",
+      "reason": "src/commands/index/indexCommand.ts implements Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一…"
+    },
+    {
+      "source": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "target": "file:src/memoryIndex/memoryGraph.ts",
+      "kind": "implemented_by",
+      "reason": "src/memoryIndex/memoryGraph.ts implements Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先…"
+    },
+    {
+      "source": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "target": "file:src/commands/memory-index/memoryIndexCommand.ts",
+      "kind": "implemented_by",
+      "reason": "src/commands/memory-index/memoryIndexCommand.ts implements Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 …"
+    },
+    {
+      "source": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "target": "file:src/commands/memory-index/memoryIndexCommand.test.ts",
+      "kind": "implemented_by",
+      "reason": "src/commands/memory-index/memoryIndexCommand.test.ts implements Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C A…"
+    },
+    {
+      "source": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "target": "file:src/memoryIndex/build.test.ts",
+      "kind": "implemented_by",
+      "reason": "src/memoryIndex/build.test.ts implements Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先…"
+    },
+    {
+      "source": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "target": "file:src/memoryIndex/progress.ts",
+      "kind": "implemented_by",
+      "reason": "src/memoryIndex/progress.ts implements Zig + Bun FFI 改造优先级 ## Summary - 采用 Bun-only 路线，Zig 静态库负责算法内核，运行时由共享库暴露 C ABI 给 Bun FFI。 - 第一优先…"
+    },
+    {
+      "source": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "target": "memory:memory:user_preference:548b4da7af93",
+      "kind": "constrained_by",
+      "reason": "memory:user_preference:548b4da7af93"
+    },
+    {
+      "source": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "target": "memory:memory:decision_rationale:a158a9abe1a7",
+      "kind": "constrained_by",
+      "reason": "memory:decision_rationale:a158a9abe1a7"
+    },
+    {
+      "source": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "target": "memory:memory:stable_constraint:fa5a56bd0329",
+      "kind": "constrained_by",
+      "reason": "memory:stable_constraint:fa5a56bd0329"
+    },
+    {
+      "source": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "target": "memory:memory:stable_constraint:89c1ff472125",
+      "kind": "constrained_by",
+      "reason": "memory:stable_constraint:89c1ff472125"
+    },
+    {
+      "source": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "target": "memory:memory:user_preference:6e29c2db4aa7",
+      "kind": "constrained_by",
+      "reason": "memory:user_preference:6e29c2db4aa7"
+    },
+    {
+      "source": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "target": "memory:memory:user_preference:61ad99a9f9ca",
+      "kind": "constrained_by",
+      "reason": "memory:user_preference:61ad99a9f9ca"
+    },
+    {
+      "source": "plan:plan:019d5d8e-8de6-7df2-b6b8-f370f25c24b7:019d5d8f-47e3-7bc2-ac75-245ebd352128-plan:b8c0ff161a52",
+      "target": "topic:topic:zig_bun_ffi_summary_bun_only_zig_c_abi_bun_ffi",
+      "kind": "shapes",
+      "reason": "plan:019d5d8e-8de6-7df2-b6b8-f370f25c24b7:019d5d8f-47e3-7bc2-ac75-245ebd352128-plan:b8c0ff161a52"
+    },
+    {
+      "source": "session:39821801-2edf-4d5c-b802-8be8a397b71a",
+      "target": "topic:topic:context_claude_code_note",
+      "kind": "drives",
+      "reason": "39821801-2edf-4d5c-b802-8be8a397b71a drives Context 用户希望在 Claude Code 源码基础上新增一个面向小说的 /note 功能，但这个功能的目标已经明确不是“生成分析报告”或“写自然语言总结”，而是**生成给大模型看的…"
+    },
+    {
+      "source": "topic:topic:context_claude_code_note",
+      "target": "file:/home/vscode/.claude/plans/ticklish-imagining-meadow.md",
+      "kind": "implemented_by",
+      "reason": "/home/vscode/.claude/plans/ticklish-imagining-meadow.md implements Context 用户希望在 Claude Code 源码基础上新增一个面向小说的 /note 功能，但这个功能的目标已经明确不是“生成分析报告”…"
+    },
+    {
+      "source": "topic:topic:context_claude_code_note",
+      "target": "file:demo/word2vec/split-novels-by-chapter.mjs",
+      "kind": "implemented_by",
+      "reason": "demo/word2vec/split-novels-by-chapter.mjs implements Context 用户希望在 Claude Code 源码基础上新增一个面向小说的 /note 功能，但这个功能的目标已经明确不是“生成分析报告”或“写自然语言总结”，而是*…"
+    },
+    {
+      "source": "topic:topic:context_claude_code_note",
+      "target": "memory:memory:decision_rationale:18ded10a89ec",
+      "kind": "constrained_by",
+      "reason": "memory:decision_rationale:18ded10a89ec"
+    },
+    {
+      "source": "topic:topic:context_claude_code_note",
+      "target": "memory:memory:decision_rationale:f38282090caa",
+      "kind": "constrained_by",
+      "reason": "memory:decision_rationale:f38282090caa"
+    },
+    {
+      "source": "topic:topic:context_claude_code_note",
+      "target": "memory:memory:stable_constraint:e68d24d62e82",
+      "kind": "constrained_by",
+      "reason": "memory:stable_constraint:e68d24d62e82"
+    },
+    {
+      "source": "topic:topic:context_claude_code_note",
+      "target": "memory:memory:stable_constraint:71e154c7a388",
+      "kind": "constrained_by",
+      "reason": "memory:stable_constraint:71e154c7a388"
+    },
+    {
+      "source": "topic:topic:context_claude_code_note",
+      "target": "memory:memory:decision_rationale:bef6a8ebf868",
+      "kind": "constrained_by",
+      "reason": "memory:decision_rationale:bef6a8ebf868"
+    },
+    {
+      "source": "topic:topic:context_claude_code_note",
+      "target": "memory:memory:user_preference:6ed950239d1b",
+      "kind": "constrained_by",
+      "reason": "memory:user_preference:6ed950239d1b"
+    },
+    {
+      "source": "plan:plan:39821801-2edf-4d5c-b802-8be8a397b71a:5b39be79-c0a7-4bcd-823e-2ccee8f68282:df7977d2e1a9",
+      "target": "topic:topic:context_claude_code_note",
+      "kind": "shapes",
+      "reason": "plan:39821801-2edf-4d5c-b802-8be8a397b71a:5b39be79-c0a7-4bcd-823e-2ccee8f68282:df7977d2e1a9"
+    },
+    {
+      "source": "plan:plan:39821801-2edf-4d5c-b802-8be8a397b71a:31df2955-eb41-4c8c-9ac4-0fac105b9d2d:a82ea98ea78f",
+      "target": "topic:topic:context_claude_code_note",
+      "kind": "shapes",
+      "reason": "plan:39821801-2edf-4d5c-b802-8be8a397b71a:31df2955-eb41-4c8c-9ac4-0fac105b9d2d:a82ea98ea78f"
+    },
+    {
+      "source": "plan:plan:39821801-2edf-4d5c-b802-8be8a397b71a:13cbbe81-e850-4367-bbdf-9bc5a94f5238:a96e92d3c5d0",
+      "target": "topic:topic:context_claude_code_note",
+      "kind": "shapes",
+      "reason": "plan:39821801-2edf-4d5c-b802-8be8a397b71a:13cbbe81-e850-4367-bbdf-9bc5a94f5238:a96e92d3c5d0"
+    },
+    {
+      "source": "session:257dbf5f-1dab-40ef-92f8-ead2e76c50aa",
+      "target": "topic:topic:a50f8a2ad9ec",
+      "kind": "drives",
+      "reason": "257dbf5f-1dab-40ef-92f8-ead2e76c50aa drives 写回文档"
+    },
+    {
+      "source": "topic:topic:a50f8a2ad9ec",
+      "target": "file:todo/memoryIndex-长期记忆系统评估.md",
+      "kind": "implemented_by",
+      "reason": "todo/memoryIndex-长期记忆系统评估.md implements 写回文档"
+    },
+    {
+      "source": "session:019d5cf0-1e91-7162-9410-ecc8db581d05",
+      "target": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "kind": "drives",
+      "reason": "019d5cf0-1e91-7162-9410-ecc8db581d05 drives Autoallow + Autocontinue 模式 ## Summary - 保留原来的 autoallow 方案，并扩展一个独立的 autocontinue 模式。 - autoall…"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "file:src/constants/prompts.ts",
+      "kind": "implemented_by",
+      "reason": "src/constants/prompts.ts implements Autoallow + Autocontinue 模式 ## Summary - 保留原来的 autoallow 方案，并扩展一个独立的 autocontinue 模式。 - autoall…"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "file:src/main.tsx",
+      "kind": "implemented_by",
+      "reason": "src/main.tsx implements Autoallow + Autocontinue 模式 ## Summary - 保留原来的 autoallow 方案，并扩展一个独立的 autocontinue 模式。 - autoall…"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "file:src/commands/autoallow.ts",
+      "kind": "implemented_by",
+      "reason": "src/commands/autoallow.ts implements Autoallow + Autocontinue 模式 ## Summary - 保留原来的 autoallow 方案，并扩展一个独立的 autocontinue 模式。 - autoall…"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "file:src/commands/autocontinue.ts",
+      "kind": "implemented_by",
+      "reason": "src/commands/autocontinue.ts implements Autoallow + Autocontinue 模式 ## Summary - 保留原来的 autoallow 方案，并扩展一个独立的 autocontinue 模式。 - autoall…"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "file:src/components/CustomSelect/select.tsx",
+      "kind": "implemented_by",
+      "reason": "src/components/CustomSelect/select.tsx implements Autoallow + Autocontinue 模式 ## Summary - 保留原来的 autoallow 方案，并扩展一个独立的 autocontinue 模式。 - a…"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "file:src/components/CustomSelect/autoSelect.test.ts",
+      "kind": "implemented_by",
+      "reason": "src/components/CustomSelect/autoSelect.test.ts implements Autoallow + Autocontinue 模式 ## Summary - 保留原来的 autoallow 方案，并扩展一个独立的 autocontinue…"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "file:src/utils/toggleState.test.ts",
+      "kind": "implemented_by",
+      "reason": "src/utils/toggleState.test.ts implements Autoallow + Autocontinue 模式 ## Summary - 保留原来的 autoallow 方案，并扩展一个独立的 autocontinue 模式。 - autoall…"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "file:src/components/mcp/ElicitationDialog.tsx",
+      "kind": "implemented_by",
+      "reason": "src/components/mcp/ElicitationDialog.tsx implements Autoallow + Autocontinue 模式 ## Summary - 保留原来的 autoallow 方案，并扩展一个独立的 autocontinue 模式。 -…"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "file:src/components/permissions/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.tsx",
+      "kind": "implemented_by",
+      "reason": "src/components/permissions/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.tsx implements Autoallow + Autocontinue 模式 ## …"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "file:src/components/permissions/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx",
+      "kind": "implemented_by",
+      "reason": "src/components/permissions/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx implements Autoallow + Autocontinue 模式 ## Summar…"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "file:src/components/CostThresholdDialog.tsx",
+      "kind": "implemented_by",
+      "reason": "src/components/CostThresholdDialog.tsx implements Autoallow + Autocontinue 模式 ## Summary - 保留原来的 autoallow 方案，并扩展一个独立的 autocontinue 模式。 - a…"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "memory:memory:stable_constraint:3f085d5a982a",
+      "kind": "constrained_by",
+      "reason": "memory:stable_constraint:3f085d5a982a"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "memory:memory:user_preference:3399339fe1a5",
+      "kind": "constrained_by",
+      "reason": "memory:user_preference:3399339fe1a5"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "memory:memory:decision_rationale:d0d4c443b1e3",
+      "kind": "constrained_by",
+      "reason": "memory:decision_rationale:d0d4c443b1e3"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "memory:memory:decision_rationale:6cbfe02592e3",
+      "kind": "constrained_by",
+      "reason": "memory:decision_rationale:6cbfe02592e3"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "memory:memory:decision_rationale:0e9b6d194ff4",
+      "kind": "constrained_by",
+      "reason": "memory:decision_rationale:0e9b6d194ff4"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "memory:memory:decision_rationale:7086ebcaff87",
+      "kind": "constrained_by",
+      "reason": "memory:decision_rationale:7086ebcaff87"
+    },
+    {
+      "source": "plan:plan:019d5cf0-1e91-7162-9410-ecc8db581d05:019d5cf1-3b7e-7573-81b0-d9acf1bb4130-plan:266a71521fbf",
+      "target": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "kind": "shapes",
+      "reason": "plan:019d5cf0-1e91-7162-9410-ecc8db581d05:019d5cf1-3b7e-7573-81b0-d9acf1bb4130-plan:266a71521fbf"
+    },
+    {
+      "source": "plan:plan:019d5cf0-1e91-7162-9410-ecc8db581d05:019d5cfe-a7c5-7503-a951-a6466a79a33b-plan:37322a570d3a",
+      "target": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "kind": "shapes",
+      "reason": "plan:019d5cf0-1e91-7162-9410-ecc8db581d05:019d5cfe-a7c5-7503-a951-a6466a79a33b-plan:37322a570d3a"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "topic:topic:claudenative_preview_ant_200k_1m",
+      "kind": "related_to",
+      "reason": "shared files or durable memory"
+    },
+    {
+      "source": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "target": "topic:topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+      "kind": "related_to",
+      "reason": "shared files or durable memory"
+    },
+    {
+      "source": "session:89afb6ee-0166-48ea-9900-e1a53b085a23",
+      "target": "topic:topic:context_agent_tool_result_missing_due_to_interna",
+      "kind": "drives",
+      "reason": "89afb6ee-0166-48ea-9900-e1a53b085a23 drives Context 修复本地异步 agent 在已成功启动并完成工作后，主线程偶发显示 [Tool result missing due to internal error] 的问题。现有线索表…"
+    },
+    {
+      "source": "topic:topic:context_agent_tool_result_missing_due_to_interna",
+      "target": "file:/home/vscode/.claude/plans/ancient-percolating-cookie.md",
+      "kind": "implemented_by",
+      "reason": "/home/vscode/.claude/plans/ancient-percolating-cookie.md implements Context 修复本地异步 agent 在已成功启动并完成工作后，主线程偶发显示 [Tool result missing due to i…"
+    },
+    {
+      "source": "topic:topic:context_agent_tool_result_missing_due_to_interna",
+      "target": "memory:memory:superseded_decision:76d050d00ce1",
+      "kind": "constrained_by",
+      "reason": "memory:superseded_decision:76d050d00ce1"
+    },
+    {
+      "source": "topic:topic:context_agent_tool_result_missing_due_to_interna",
+      "target": "memory:memory:decision_rationale:68a2923343eb",
+      "kind": "constrained_by",
+      "reason": "memory:decision_rationale:68a2923343eb"
+    },
+    {
+      "source": "topic:topic:context_agent_tool_result_missing_due_to_interna",
+      "target": "memory:memory:decision_rationale:df3fc2313c28",
+      "kind": "constrained_by",
+      "reason": "memory:decision_rationale:df3fc2313c28"
+    },
+    {
+      "source": "topic:topic:context_agent_tool_result_missing_due_to_interna",
+      "target": "memory:memory:decision_rationale:818afbeae6b6",
+      "kind": "constrained_by",
+      "reason": "memory:decision_rationale:818afbeae6b6"
+    },
+    {
+      "source": "plan:plan:89afb6ee-0166-48ea-9900-e1a53b085a23:e2ddccbf-44ea-41f6-a2db-3978cbe40774:2f31f3736e52",
+      "target": "topic:topic:context_agent_tool_result_missing_due_to_interna",
+      "kind": "shapes",
+      "reason": "plan:89afb6ee-0166-48ea-9900-e1a53b085a23:e2ddccbf-44ea-41f6-a2db-3978cbe40774:2f31f3736e52"
+    },
+    {
+      "source": "session:019d57a0-aa9b-7b20-aa9a-7322a9305662",
+      "target": "topic:topic:claudenative_preview_ant_200k_1m",
+      "kind": "drives",
+      "reason": "019d57a0-aa9b-7b20-aa9a-7322a9305662 drives 新任务，看看claudenative preview \"ant\"整个分支，为什么到达200K上下文不会压缩，是不是写死1M上下文了"
+    },
+    {
+      "source": "topic:topic:claudenative_preview_ant_200k_1m",
+      "target": "file:src/judge/autoJudge.ts",
+      "kind": "implemented_by",
+      "reason": "src/judge/autoJudge.ts implements 新任务，看看claudenative preview \"ant\"整个分支，为什么到达200K上下文不会压缩，是不是写死1M上下文了"
+    },
+    {
+      "source": "topic:topic:claudenative_preview_ant_200k_1m",
+      "target": "file:src/constants/prompts.ts",
+      "kind": "implemented_by",
+      "reason": "src/constants/prompts.ts implements 新任务，看看claudenative preview \"ant\"整个分支，为什么到达200K上下文不会压缩，是不是写死1M上下文了"
+    },
+    {
+      "source": "topic:topic:claudenative_preview_ant_200k_1m",
+      "target": "file:src/query.ts",
+      "kind": "implemented_by",
+      "reason": "src/query.ts implements 新任务，看看claudenative preview \"ant\"整个分支，为什么到达200K上下文不会压缩，是不是写死1M上下文了"
+    },
+    {
+      "source": "topic:topic:claudenative_preview_ant_200k_1m",
+      "target": "file:src/tools/TaskUpdateTool/TaskUpdateTool.ts",
+      "kind": "implemented_by",
+      "reason": "src/tools/TaskUpdateTool/TaskUpdateTool.ts implements 新任务，看看claudenative preview \"ant\"整个分支，为什么到达200K上下文不会压缩，是不是写死1M上下文了"
+    },
+    {
+      "source": "topic:topic:claudenative_preview_ant_200k_1m",
+      "target": "file:src/tools/TodoWriteTool/TodoWriteTool.ts",
+      "kind": "implemented_by",
+      "reason": "src/tools/TodoWriteTool/TodoWriteTool.ts implements 新任务，看看claudenative preview \"ant\"整个分支，为什么到达200K上下文不会压缩，是不是写死1M上下文了"
+    },
+    {
+      "source": "topic:topic:claudenative_preview_ant_200k_1m",
+      "target": "file:src/tools/AgentTool/AgentTool.tsx",
+      "kind": "implemented_by",
+      "reason": "src/tools/AgentTool/AgentTool.tsx implements 新任务，看看claudenative preview \"ant\"整个分支，为什么到达200K上下文不会压缩，是不是写死1M上下文了"
+    },
+    {
+      "source": "topic:topic:claudenative_preview_ant_200k_1m",
+      "target": "memory:memory:user_preference:469d13754c55",
+      "kind": "constrained_by",
+      "reason": "memory:user_preference:469d13754c55"
+    },
+    {
+      "source": "topic:topic:claudenative_preview_ant_200k_1m",
+      "target": "memory:memory:stable_constraint:61047b47b1be",
+      "kind": "constrained_by",
+      "reason": "memory:stable_constraint:61047b47b1be"
+    },
+    {
+      "source": "topic:topic:claudenative_preview_ant_200k_1m",
+      "target": "memory:memory:decision_rationale:a8712a5f2e6f",
+      "kind": "constrained_by",
+      "reason": "memory:decision_rationale:a8712a5f2e6f"
+    },
+    {
+      "source": "topic:topic:claudenative_preview_ant_200k_1m",
+      "target": "memory:memory:stable_constraint:ef68e9174eb6",
+      "kind": "constrained_by",
+      "reason": "memory:stable_constraint:ef68e9174eb6"
+    },
+    {
+      "source": "topic:topic:claudenative_preview_ant_200k_1m",
+      "target": "memory:memory:decision_rationale:ed24b1c17888",
+      "kind": "constrained_by",
+      "reason": "memory:decision_rationale:ed24b1c17888"
+    },
+    {
+      "source": "topic:topic:claudenative_preview_ant_200k_1m",
+      "target": "memory:memory:stable_constraint:25374f26a052",
+      "kind": "constrained_by",
+      "reason": "memory:stable_constraint:25374f26a052"
+    },
+    {
+      "source": "topic:topic:claudenative_preview_ant_200k_1m",
+      "target": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "kind": "related_to",
+      "reason": "shared files or durable memory"
+    },
+    {
+      "source": "topic:topic:claudenative_preview_ant_200k_1m",
+      "target": "topic:topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+      "kind": "related_to",
+      "reason": "shared files or durable memory"
+    },
+    {
+      "source": "session:25256e08-2d31-403f-a92c-773eee0ad2d1",
+      "target": "topic:topic:you_are_verifying_whether_the_following_task_has",
+      "kind": "drives",
+      "reason": "25256e08-2d31-403f-a92c-773eee0ad2d1 drives You are verifying whether the following task has been correctly completed. === Original Task ==…"
+    },
+    {
+      "source": "session:a0782a58-d1b3-4cdc-882d-076f2d84a787",
+      "target": "topic:topic:you_are_verifying_whether_the_following_task_has",
+      "kind": "drives",
+      "reason": "a0782a58-d1b3-4cdc-882d-076f2d84a787 drives You are verifying whether the following task has been correctly completed. === Original Task ==…"
+    },
+    {
+      "source": "session:3ee728ab-e89b-43f1-af73-a2ca0a78aaaf",
+      "target": "topic:topic:you_are_verifying_whether_the_following_task_has",
+      "kind": "drives",
+      "reason": "3ee728ab-e89b-43f1-af73-a2ca0a78aaaf drives You are verifying whether the following task has been correctly completed. === Original Task ==…"
+    },
+    {
+      "source": "session:cee42579-5740-4474-8cfd-d32cbb851ff0",
+      "target": "topic:topic:you_are_verifying_whether_the_following_task_has",
+      "kind": "drives",
+      "reason": "cee42579-5740-4474-8cfd-d32cbb851ff0 drives You are verifying whether the following task has been correctly completed. === Original Task ==…"
+    },
+    {
+      "source": "session:45810dcb-ffcc-485b-83c2-aaba460604e0",
+      "target": "topic:topic:verify_that_the_file_home_vscode_projects_claude",
+      "kind": "drives",
+      "reason": "45810dcb-ffcc-485b-83c2-aaba460604e0 drives Verify that the file /home/vscode/projects/claudecode/package/claude-code-2.1.88/demo/observer.…"
+    },
+    {
+      "source": "session:802221a7-eb18-4285-8ba2-788a702b8f3e",
+      "target": "topic:topic:verify_the_command_pattern_implementation_in_the",
+      "kind": "drives",
+      "reason": "802221a7-eb18-4285-8ba2-788a702b8f3e drives Verify the Command pattern implementation in the demo/ folder. Original task: 在demo/文件夹里面用ts实现一…"
+    },
+    {
+      "source": "session:d9109c26-7a4c-4336-b7a9-52b8c92586e2",
+      "target": "topic:topic:b72fd97e5a89",
+      "kind": "drives",
+      "reason": "d9109c26-7a4c-4336-b7a9-52b8c92586e2 drives 不要看计划书，计划书可能还没有更新，你按照我的意见改"
+    },
+    {
+      "source": "topic:topic:b72fd97e5a89",
+      "target": "memory:memory:stable_constraint:4ffbd13e5850",
+      "kind": "constrained_by",
+      "reason": "memory:stable_constraint:4ffbd13e5850"
+    },
+    {
+      "source": "topic:topic:b72fd97e5a89",
+      "target": "memory:memory:stable_constraint:0b7e3d94016f",
+      "kind": "constrained_by",
+      "reason": "memory:stable_constraint:0b7e3d94016f"
+    },
+    {
+      "source": "session:34050167-4637-4b89-82a0-a849a3249275",
+      "target": "topic:topic:verify_the_bubble_sort_implementation_at_home_vs",
+      "kind": "drives",
+      "reason": "34050167-4637-4b89-82a0-a849a3249275 drives Verify the bubble sort implementation at /home/vscode/projects/claudecode/package/claude-code-2…"
+    },
+    {
+      "source": "session:0e7a8230-ebeb-4e56-99b7-bf37e8c069d1",
+      "target": "topic:topic:debug",
+      "kind": "drives",
+      "reason": "0e7a8230-ebeb-4e56-99b7-bf37e8c069d1 drives debug"
+    },
+    {
+      "source": "topic:topic:debug",
+      "target": "file:demo/redblack.js",
+      "kind": "implemented_by",
+      "reason": "demo/redblack.js implements debug"
+    },
+    {
+      "source": "topic:topic:debug",
+      "target": "file:demo/sort.js",
+      "kind": "implemented_by",
+      "reason": "demo/sort.js implements debug"
+    },
+    {
+      "source": "session:42888d16-0f95-48de-8d82-1aa0d2f7d9e1",
+      "target": "topic:topic:verify_that_the_zig_sort_implementation_in_home_",
+      "kind": "drives",
+      "reason": "42888d16-0f95-48de-8d82-1aa0d2f7d9e1 drives Verify that the Zig sort implementation in /home/vscode/projects/claudecode/package/claude-code…"
+    },
+    {
+      "source": "session:45fe8ca5-a8b1-4a90-844a-28f5ca540dc1",
+      "target": "topic:topic:demo_zig",
+      "kind": "drives",
+      "reason": "45fe8ca5-a8b1-4a90-844a-28f5ca540dc1 drives 在demo/ 用zig实现红黑树排序算法"
+    },
+    {
+      "source": "topic:topic:demo_zig",
+      "target": "file:demo/redblack.zig",
+      "kind": "implemented_by",
+      "reason": "demo/redblack.zig implements 在demo/ 用zig实现红黑树排序算法"
+    },
+    {
+      "source": "session:019d5730-8b1f-7b20-9c85-cf7bce826194",
+      "target": "topic:topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+      "kind": "drives",
+      "reason": "019d5730-8b1f-7b20-9c85-cf7bce826194 drives 这样，在你改之前是有效的 你看看这里是否哪里导致问题 git abf390e72aade22092738e3ea92f2f9eb7538770"
+    },
+    {
+      "source": "topic:topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+      "target": "file:src/commands/judge.ts",
+      "kind": "implemented_by",
+      "reason": "src/commands/judge.ts implements 这样，在你改之前是有效的 你看看这里是否哪里导致问题 git abf390e72aade22092738e3ea92f2f9eb7538770"
+    },
+    {
+      "source": "topic:topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+      "target": "file:src/components/MessageRow.tsx",
+      "kind": "implemented_by",
+      "reason": "src/components/MessageRow.tsx implements 这样，在你改之前是有效的 你看看这里是否哪里导致问题 git abf390e72aade22092738e3ea92f2f9eb7538770"
+    },
+    {
+      "source": "topic:topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+      "target": "file:src/query.ts",
+      "kind": "implemented_by",
+      "reason": "src/query.ts implements 这样，在你改之前是有效的 你看看这里是否哪里导致问题 git abf390e72aade22092738e3ea92f2f9eb7538770"
+    },
+    {
+      "source": "topic:topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+      "target": "file:src/components/Messages.tsx",
+      "kind": "implemented_by",
+      "reason": "src/components/Messages.tsx implements 这样，在你改之前是有效的 你看看这里是否哪里导致问题 git abf390e72aade22092738e3ea92f2f9eb7538770"
+    },
+    {
+      "source": "topic:topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+      "target": "file:src/components/PromptInput/PromptInputModeIndicator.tsx",
+      "kind": "implemented_by",
+      "reason": "src/components/PromptInput/PromptInputModeIndicator.tsx implements 这样，在你改之前是有效的 你看看这里是否哪里导致问题 git abf390e72aade22092738e3ea92f2f9eb7538770"
+    },
+    {
+      "source": "topic:topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+      "target": "file:src/replLauncher.tsx",
+      "kind": "implemented_by",
+      "reason": "src/replLauncher.tsx implements 这样，在你改之前是有效的 你看看这里是否哪里导致问题 git abf390e72aade22092738e3ea92f2f9eb7538770"
+    },
+    {
+      "source": "topic:topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+      "target": "file:src/main.tsx",
+      "kind": "implemented_by",
+      "reason": "src/main.tsx implements 这样，在你改之前是有效的 你看看这里是否哪里导致问题 git abf390e72aade22092738e3ea92f2f9eb7538770"
+    },
+    {
+      "source": "topic:topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+      "target": "file:src/state/onChangeAppState.ts",
+      "kind": "implemented_by",
+      "reason": "src/state/onChangeAppState.ts implements 这样，在你改之前是有效的 你看看这里是否哪里导致问题 git abf390e72aade22092738e3ea92f2f9eb7538770"
+    },
+    {
+      "source": "topic:topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+      "target": "memory:memory:stable_constraint:2d174ad5927d",
+      "kind": "constrained_by",
+      "reason": "memory:stable_constraint:2d174ad5927d"
+    },
+    {
+      "source": "topic:topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+      "target": "topic:topic:autoallow_autocontinue_summary_autoallow_autocon",
+      "kind": "related_to",
+      "reason": "shared files or durable memory"
+    },
+    {
+      "source": "topic:topic:git_abf390e72aade22092738e3ea92f2f9eb7538770",
+      "target": "topic:topic:claudenative_preview_ant_200k_1m",
+      "kind": "related_to",
+      "reason": "shared files or durable memory"
+    },
+    {
+      "source": "session:019d5d8e-8de6-7df2-b6b8-f370f25c24b7",
+      "target": "session:30a599d8-2e2c-4c6f-8ad5-3d26080379cb",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:39821801-2edf-4d5c-b802-8be8a397b71a",
+      "target": "session:257dbf5f-1dab-40ef-92f8-ead2e76c50aa",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:39821801-2edf-4d5c-b802-8be8a397b71a",
+      "target": "session:30a599d8-2e2c-4c6f-8ad5-3d26080379cb",
+      "kind": "follows",
+      "reason": "next session"
+    },
+    {
+      "source": "session:257dbf5f-1dab-40ef-92f8-ead2e76c50aa",
+      "target": "session:019d6234-f271-70c1-936e-2e0df22d71f6",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:257dbf5f-1dab-40ef-92f8-ead2e76c50aa",
+      "target": "session:39821801-2edf-4d5c-b802-8be8a397b71a",
+      "kind": "follows",
+      "reason": "next session"
+    },
+    {
+      "source": "session:019d5cf0-1e91-7162-9410-ecc8db581d05",
+      "target": "session:5c823e32-5d91-4d54-be7c-6a1f441095f5",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:019d5cf0-1e91-7162-9410-ecc8db581d05",
+      "target": "session:472e0c8f-567f-4f1e-b74c-7c813e2386fa",
+      "kind": "follows",
+      "reason": "next session"
+    },
+    {
+      "source": "session:89afb6ee-0166-48ea-9900-e1a53b085a23",
+      "target": "session:019d57a0-aa9b-7b20-aa9a-7322a9305662",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:89afb6ee-0166-48ea-9900-e1a53b085a23",
+      "target": "session:5c823e32-5d91-4d54-be7c-6a1f441095f5",
+      "kind": "follows",
+      "reason": "next session"
+    },
+    {
+      "source": "session:019d57a0-aa9b-7b20-aa9a-7322a9305662",
+      "target": "session:470cce1c-8b0e-4ea6-a34f-d20490a35ca2",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:019d57a0-aa9b-7b20-aa9a-7322a9305662",
+      "target": "session:89afb6ee-0166-48ea-9900-e1a53b085a23",
+      "kind": "follows",
+      "reason": "next session"
+    },
+    {
+      "source": "session:25256e08-2d31-403f-a92c-773eee0ad2d1",
+      "target": "session:a0782a58-d1b3-4cdc-882d-076f2d84a787",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:25256e08-2d31-403f-a92c-773eee0ad2d1",
+      "target": "session:0123c058-1625-42e5-b85b-42fca3ede241",
+      "kind": "follows",
+      "reason": "next session"
+    },
+    {
+      "source": "session:a0782a58-d1b3-4cdc-882d-076f2d84a787",
+      "target": "session:e47568ab-8a00-4938-adcf-a6e1f079ff5f",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:a0782a58-d1b3-4cdc-882d-076f2d84a787",
+      "target": "session:25256e08-2d31-403f-a92c-773eee0ad2d1",
+      "kind": "follows",
+      "reason": "next session"
+    },
+    {
+      "source": "session:3ee728ab-e89b-43f1-af73-a2ca0a78aaaf",
+      "target": "session:13d41f26-2b3b-4e9d-8232-c3889bae742d",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:3ee728ab-e89b-43f1-af73-a2ca0a78aaaf",
+      "target": "session:e47568ab-8a00-4938-adcf-a6e1f079ff5f",
+      "kind": "follows",
+      "reason": "next session"
+    },
+    {
+      "source": "session:cee42579-5740-4474-8cfd-d32cbb851ff0",
+      "target": "session:45810dcb-ffcc-485b-83c2-aaba460604e0",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:cee42579-5740-4474-8cfd-d32cbb851ff0",
+      "target": "session:707fb568-c00a-40bc-9dcc-c3c3d65fb4e6",
+      "kind": "follows",
+      "reason": "next session"
+    },
+    {
+      "source": "session:45810dcb-ffcc-485b-83c2-aaba460604e0",
+      "target": "session:802221a7-eb18-4285-8ba2-788a702b8f3e",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:45810dcb-ffcc-485b-83c2-aaba460604e0",
+      "target": "session:cee42579-5740-4474-8cfd-d32cbb851ff0",
+      "kind": "follows",
+      "reason": "next session"
+    },
+    {
+      "source": "session:802221a7-eb18-4285-8ba2-788a702b8f3e",
+      "target": "session:e29f6501-b10b-4aa5-8263-d887a4ad4fe8",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:802221a7-eb18-4285-8ba2-788a702b8f3e",
+      "target": "session:45810dcb-ffcc-485b-83c2-aaba460604e0",
+      "kind": "follows",
+      "reason": "next session"
+    },
+    {
+      "source": "session:d9109c26-7a4c-4336-b7a9-52b8c92586e2",
+      "target": "session:2dd74c4b-c102-4cdb-b5af-a575f9a61efd",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:d9109c26-7a4c-4336-b7a9-52b8c92586e2",
+      "target": "session:019d581b-fb94-7f70-999e-838541a1a4c0",
+      "kind": "follows",
+      "reason": "next session"
+    },
+    {
+      "source": "session:34050167-4637-4b89-82a0-a849a3249275",
+      "target": "session:0e7a8230-ebeb-4e56-99b7-bf37e8c069d1",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:34050167-4637-4b89-82a0-a849a3249275",
+      "target": "session:32678326-1137-47db-bed2-0c778edbd4a6",
+      "kind": "follows",
+      "reason": "next session"
+    },
+    {
+      "source": "session:0e7a8230-ebeb-4e56-99b7-bf37e8c069d1",
+      "target": "session:42888d16-0f95-48de-8d82-1aa0d2f7d9e1",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:0e7a8230-ebeb-4e56-99b7-bf37e8c069d1",
+      "target": "session:34050167-4637-4b89-82a0-a849a3249275",
+      "kind": "follows",
+      "reason": "next session"
+    },
+    {
+      "source": "session:42888d16-0f95-48de-8d82-1aa0d2f7d9e1",
+      "target": "session:45fe8ca5-a8b1-4a90-844a-28f5ca540dc1",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:42888d16-0f95-48de-8d82-1aa0d2f7d9e1",
+      "target": "session:0e7a8230-ebeb-4e56-99b7-bf37e8c069d1",
+      "kind": "follows",
+      "reason": "next session"
+    },
+    {
+      "source": "session:45fe8ca5-a8b1-4a90-844a-28f5ca540dc1",
+      "target": "session:a96b405a-5ee7-41d6-b30d-f6c3e911a2be",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:45fe8ca5-a8b1-4a90-844a-28f5ca540dc1",
+      "target": "session:42888d16-0f95-48de-8d82-1aa0d2f7d9e1",
+      "kind": "follows",
+      "reason": "next session"
+    },
+    {
+      "source": "session:019d5730-8b1f-7b20-9c85-cf7bce826194",
+      "target": "session:778e60eb-5d26-4000-8cc7-50b655c737cc",
+      "kind": "follows",
+      "reason": "previous session"
+    },
+    {
+      "source": "session:019d5730-8b1f-7b20-9c85-cf7bce826194",
+      "target": "session:a96b405a-5ee7-41d6-b30d-f6c3e911a2be",
+      "kind": "follows",
+      "reason": "next session"
+    }
+  ]
+}

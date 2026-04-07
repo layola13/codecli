@@ -59,8 +59,8 @@ const quiet = {
           metaMessages: [
             `<system-reminder>\n${
               newState
-                ? 'Quiet mode is now enabled. Do not send phase-by-phase or checkpoint updates. Stay silent unless you are blocked, need confirmation for a risky action, or have a final result ready.'
-                : 'Quiet mode is now disabled. Normal milestone updates are allowed again.'
+                ? 'Quiet mode is now enabled. Stay silent unless you are blocked, need confirmation for a risky action, or have a final result ready.'
+                : 'Quiet mode is now disabled. Default behavior still avoids unsolicited progress updates; only send requested updates, blockers, confirmations, or final results.'
             }\n</system-reminder>`,
           ],
         })

@@ -16,6 +16,8 @@ import {
   type KnowledgeFact,
   type CodeAnchor,
   type ErrorMemory,
+  type ConversationTurnRecord,
+  type ConversationLink,
 } from './models.js'
 import type { ExtractionResult } from './extractors.js'
 import { StateMerger } from './merger.js'
@@ -36,6 +38,7 @@ export function createEmptySessionState(): SessionState {
     constraints: [],
     tasks: [],
     lastUpdatedTurn: 0,
+    conversationTurns: [],
   }
 }
 
@@ -336,6 +339,75 @@ export class StateSerializer {
     return lines.join('\n')
   }
 
+  serializeGraph(state: SessionState): string {
+    const lines: string[] = []
+    const turns = state.conversationTurns || []
+
+    lines.push('# session_graph.py  (auto-generated before conversation compaction)')
+    lines.push('# Turn-level relationship skeleton for the current conversation.')
+    lines.push('from __future__ import annotations')
+    lines.push('from typing import Dict, List')
+    lines.push('')
+
+    if (turns.length === 0) {
+      lines.push('class ConversationGraph:')
+      lines.push('    turns_total = 0')
+      lines.push('    last_turn = None')
+      lines.push('')
+      lines.push('def get_conversation_graph() -> ConversationGraph:')
+      lines.push('    return ConversationGraph')
+      lines.push('')
+      return lines.join('\n')
+    }
+
+    for (const turn of turns) {
+      const className = graphTurnClassName(turn)
+      lines.push(`class ${className}:`)
+      lines.push(`    # @origin conversation:turn:${turn.turn}`)
+      lines.push(`    turn = ${turn.turn}`)
+      lines.push(`    role = ${pyStr(turn.role)}`)
+      lines.push(`    signature = ${pyStr(turn.signature)}`)
+      lines.push(`    summary = ${pyStr(turn.summary)}`)
+      lines.push(`    files = ${pyList(turn.referencedFiles)}`)
+      lines.push(`    tasks = ${pyList(turn.tasks)}`)
+      lines.push(`    constraints = ${pyList(turn.constraints)}`)
+      lines.push(`    decisions = ${pyList(turn.decisions)}`)
+      lines.push(`    facts = ${pyList(turn.facts)}`)
+      lines.push('    links = [')
+      for (const link of turn.links) {
+        lines.push(`        ${pyStr(formatConversationLink(link))},`)
+      }
+      lines.push('    ]')
+      lines.push('')
+    }
+
+    lines.push('class ConversationFiles:')
+    const fileMap = buildConversationFileMap(turns)
+    if (fileMap.size === 0) {
+      lines.push('    ...')
+    } else {
+      for (const [filePath, refs] of fileMap) {
+        lines.push(`    ${anchorVarName(filePath)} = ${pyList(refs)}  # ${filePath}`)
+      }
+    }
+    lines.push('')
+
+    lines.push('class ConversationGraph:')
+    lines.push(`    turns_total = ${turns.length}`)
+    lines.push(`    last_turn = ${pyStr(turnRef(turns.at(-1)!.turn))}`)
+    for (const turn of turns) {
+      lines.push(`    ${turnRef(turn.turn)} = ${graphTurnClassName(turn)}`)
+    }
+    lines.push('    files = ConversationFiles')
+    lines.push('')
+
+    lines.push('def get_conversation_graph() -> ConversationGraph:')
+    lines.push('    return ConversationGraph')
+    lines.push('')
+
+    return lines.join('\n')
+  }
+
   async save(state: SessionState, outputPath: string): Promise<void> {
     let content = this.serialize(state)
     let compressedChars = content.length
@@ -359,6 +431,10 @@ export class StateSerializer {
 
   async saveMetrics(state: SessionState, outputPath: string): Promise<void> {
     await atomicWrite(outputPath, this.serializeMetrics(state))
+  }
+
+  async saveGraph(state: SessionState, outputPath: string): Promise<void> {
+    await atomicWrite(outputPath, this.serializeGraph(state))
   }
 }
 
@@ -395,6 +471,37 @@ function anchorVarName(filePath: string): string {
     hash |= 0
   }
   return `${toVarName(stem)}_${Math.abs(hash).toString(36).slice(0, 6)}`
+}
+
+function graphTurnClassName(turn: ConversationTurnRecord): string {
+  return `Turn${String(turn.turn).padStart(4, '0')}_${turn.role === 'assistant' ? 'Assistant' : 'User'}`
+}
+
+function turnRef(turn: number): string {
+  return `turn_${String(turn).padStart(4, '0')}`
+}
+
+function formatConversationLink(link: ConversationLink): string {
+  return `${link.kind} -> ${turnRef(link.targetTurn)} (${link.note})`
+}
+
+function buildConversationFileMap(
+  turns: ConversationTurnRecord[],
+): Map<string, string[]> {
+  const map = new Map<string, string[]>()
+
+  for (const turn of turns) {
+    for (const filePath of turn.referencedFiles) {
+      if (!map.has(filePath)) {
+        map.set(filePath, [])
+      }
+      map.get(filePath)!.push(turnRef(turn.turn))
+    }
+  }
+
+  return new Map(
+    Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0])),
+  )
 }
 
 export function anchorToPythonLine(a: CodeAnchor, indent: number = 8): string {

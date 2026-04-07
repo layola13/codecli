@@ -9,6 +9,10 @@ const builds = [
     entrypoint: 'src/indexing/parseWorker.ts',
     outfile: 'src/commands/index/parseWorker.bundle.mjs',
   },
+  {
+    entrypoint: 'src/memoryIndex/autoMemoryIndexWorker.ts',
+    outfile: 'src/commands/memory-index/autoMemoryIndexWorker.bundle.mjs',
+  },
 ]
 
 for (const build of builds) {

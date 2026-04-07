@@ -12,6 +12,7 @@ import {
   getMaxBashTimeoutMs,
 } from '../../utils/timeouts.js'
 import { getCodeIndexToolDeferralHint } from '../../utils/codeIndexGuidance.js'
+import { getMemoryIndexToolDeferralHint } from '../../utils/memoryIndexGuidance.js'
 import {
   getUndercoverInstructions,
   isUndercover,
@@ -281,6 +282,10 @@ export function getSimplePrompt(): string {
 
   const toolPreferenceItems = [
     getCodeIndexToolDeferralHint({
+      skillToolName: SKILL_TOOL_NAME,
+      toolName: BASH_TOOL_NAME,
+    }),
+    getMemoryIndexToolDeferralHint({
       skillToolName: SKILL_TOOL_NAME,
       toolName: BASH_TOOL_NAME,
     }),

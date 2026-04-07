@@ -9,6 +9,7 @@ import path from 'path'
 import { promises as fs } from 'fs'
 import { type SessionState } from './models.js'
 import { MasterExtractor } from './extractors.js'
+import { buildConversationTurnRecord } from './graph.js'
 import { StateMerger } from './merger.js'
 import { StateSerializer, createEmptySessionState } from './serializer.js'
 import { atomicWrite, makeId } from './utils.js'
@@ -77,6 +78,10 @@ export class ContextCompressorEngine {
     return path.join(this.outputDir, 'session_metrics.py')
   }
 
+  get outputGraphPath(): string {
+    return path.join(this.outputDir, 'session_graph.py')
+  }
+
   /**
    * Ingest a single conversation turn.
    * Silent failure: catches errors and returns current state.
@@ -86,7 +91,20 @@ export class ContextCompressorEngine {
       this.rawCharsIngested += content.length
 
       const extraction = this.extractor.extract(content, role, turn, this.state)
+      const conversationTurns = this.state.conversationTurns || []
+      const normalizedRole = role === 'assistant' ? 'assistant' : 'user'
       this.state = this.merger.merge(this.state, extraction, turn)
+      this.state.conversationTurns = [
+        ...conversationTurns,
+        buildConversationTurnRecord(
+          normalizedRole,
+          content,
+          turn,
+          makeId('turn', `${role}:${content}`, turn),
+          extraction,
+          conversationTurns,
+        ),
+      ]
       this.state.totalTurns = turn
       this.state.lastTurnSignature = makeId('turn', `${role}:${content}`, turn)
       this.syncStateMetrics()
@@ -123,6 +141,7 @@ export class ContextCompressorEngine {
       this.syncStateMetrics()
       await this.serializer.saveHistory(this.state, this.outputHistoryPath)
       await this.serializer.saveMetrics(this.state, this.outputMetricsPath)
+      await this.serializer.saveGraph(this.state, this.outputGraphPath)
       await atomicWrite(this.outputJsonPath, JSON.stringify(this.state, null, 2))
     } catch (e) {
       console.error('[Compressor] save failed:', e)
@@ -185,6 +204,7 @@ export class ContextCompressorEngine {
       const jsonContent = await fs.readFile(this.outputJsonPath, 'utf-8')
       const parsed = JSON.parse(jsonContent) as SessionState
       this.state = parsed
+      this.state.conversationTurns = this.state.conversationTurns || []
       this.sessionId = parsed.sessionId || this.sessionId
       this.rawCharsIngested = parsed.rawCharsIngested || 0
       this.syncStateMetrics()
@@ -218,6 +238,7 @@ export class ContextCompressorEngine {
     this.state.sessionId = this.state.sessionId || this.sessionId
     this.state.rawCharsIngested = this.rawCharsIngested
     this.state.totalTurns = this.state.totalTurns || this.state.lastUpdatedTurn
+    this.state.conversationTurns = this.state.conversationTurns || []
   }
 
   private _parsePythonState(content: string): SessionState | null {

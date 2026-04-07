@@ -196,6 +196,16 @@ const getBaseUserContext = memoize(
   },
 )
 
+function annotateSessionStateForPrompt(sessionState: string): string {
+  return [
+    'IMPORTANT: `sessionState` below is a lossy compact summary for continuity only.',
+    'It is NOT the source of truth for exact prior user requests, plans, code edits, or full dialog history.',
+    'When a generated `.memory_index` is available and the task depends on older project history, prefer `memory-index` / `.memory_index/index/events.jsonl` over this summary.',
+    '',
+    sessionState,
+  ].join('\n')
+}
+
 type UserContextFn = (() => Promise<{ [k: string]: string }>) & {
   cache: typeof getBaseUserContext.cache
 }
@@ -212,7 +222,9 @@ export const getUserContext: UserContextFn = Object.assign(
     const { pinnedFacts, claudeMd, currentDate } = baseContext
     return {
       ...(pinnedFacts && { pinnedFacts }),
-      ...(sessionState && { sessionState }),
+      ...(sessionState && {
+        sessionState: annotateSessionStateForPrompt(sessionState),
+      }),
       ...(claudeMd && { claudeMd }),
       ...(currentDate && { currentDate }),
     }

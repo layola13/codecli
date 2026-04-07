@@ -44,6 +44,7 @@ import {
   analyzeContext,
   tokenStatsToStatsigMetrics,
 } from '../../utils/contextAnalysis.js'
+import { startContextCompressionAgent } from '../../context/compression/runtime.js'
 import { logForDebugging } from '../../utils/debug.js'
 import { hasExactErrorMessage } from '../../utils/errors.js'
 import { cacheToObject } from '../../utils/fileStateCache.js'
@@ -397,6 +398,8 @@ export async function compactConversation(
     if (messages.length === 0) {
       throw new Error(ERROR_MESSAGE_NOT_ENOUGH_MESSAGES)
     }
+
+    startContextCompressionAgent(messages)
 
     const preCompactTokenCount = tokenCountWithEstimation(messages)
 
@@ -806,6 +809,8 @@ export async function partialCompactConversation(
           : 'Nothing to summarize after the selected message.',
       )
     }
+
+    startContextCompressionAgent(allMessages)
 
     const preCompactTokenCount = tokenCountWithEstimation(allMessages)
 

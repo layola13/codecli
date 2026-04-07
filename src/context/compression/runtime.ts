@@ -9,7 +9,11 @@ import { persistConversationSummaryMarkdown } from './summary.js'
 import { makeId } from './utils.js'
 
 const SESSION_STATE_FILENAME = 'session_state.py'
+const SESSION_GRAPH_FILENAME = 'session_graph.py'
 const MAX_PROMPT_SESSION_STATE_CHARS = 12_000
+
+let backgroundCompressionQueue: Promise<void> = Promise.resolve()
+let lastQueuedSnapshotKey: string | null = null
 
 type MessageContentBlock = {
   type?: string
@@ -38,6 +42,21 @@ function getPromptSessionStatePath(
   projectRoot: string = getCompressionProjectRoot(),
 ): string {
   return join(getContextOutputDir(projectRoot), SESSION_STATE_FILENAME)
+}
+
+function getSessionGraphPath(
+  projectRoot: string = getCompressionProjectRoot(),
+): string {
+  return join(getContextOutputDir(projectRoot), SESSION_GRAPH_FILENAME)
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath)
+    return true
+  } catch {
+    return false
+  }
 }
 
 function getContentText(
@@ -124,20 +143,27 @@ export async function persistCompressedSessionState(
     if (turns.length === 0) return
 
     await persistConversationSummaryMarkdown(messages)
+    const projectRoot = getCompressionProjectRoot()
+    const outputDir = getContextOutputDir(projectRoot)
 
     const engine = new ContextCompressorEngine({
       autoSave: false,
-      outputDir: getContextOutputDir(),
+      outputDir,
       sessionId: getSessionId(),
     })
 
     const existing = await engine.loadExistingState()
     const processedTurns = existing?.totalTurns ?? 0
+    const hasConversationGraph =
+      Array.isArray(existing?.conversationTurns) &&
+      existing.conversationTurns.length === processedTurns &&
+      (await fileExists(getSessionGraphPath(projectRoot)))
     const canAppendIncrementally =
       processedTurns > 0 &&
       processedTurns <= turns.length &&
       existing?.lastTurnSignature !== undefined &&
-      turns[processedTurns - 1]?.signature === existing.lastTurnSignature
+      turns[processedTurns - 1]?.signature === existing.lastTurnSignature &&
+      hasConversationGraph
 
     if (!canAppendIncrementally) {
       engine.reset()
@@ -161,6 +187,57 @@ export async function persistCompressedSessionState(
       { level: 'error' },
     )
   }
+}
+
+export async function persistConversationGraphSnapshot(
+  messages: readonly CompressibleMessage[],
+): Promise<void> {
+  await persistCompressedSessionState(messages)
+}
+
+function cloneCompressibleMessages(
+  messages: readonly CompressibleMessage[],
+): CompressibleMessage[] {
+  return messages.map(message => ({
+    ...message,
+    message: message.message
+      ? {
+          ...message.message,
+          content: Array.isArray(message.message.content)
+            ? message.message.content.map(block => ({ ...block }))
+            : message.message.content,
+        }
+      : undefined,
+  }))
+}
+
+export function startContextCompressionAgent(
+  messages: readonly CompressibleMessage[],
+): void {
+  const snapshot = cloneCompressibleMessages(messages)
+  const turns = toCompressionTurns(snapshot)
+  const snapshotKey =
+    turns.length > 0
+      ? `${turns.length}:${turns.at(-1)!.signature}`
+      : 'empty'
+
+  if (snapshotKey === lastQueuedSnapshotKey) {
+    return
+  }
+
+  lastQueuedSnapshotKey = snapshotKey
+  backgroundCompressionQueue = backgroundCompressionQueue
+    .catch(() => undefined)
+    .then(async () => {
+      await persistCompressedSessionState(snapshot)
+      if (lastQueuedSnapshotKey === snapshotKey) {
+        lastQueuedSnapshotKey = null
+      }
+    })
+}
+
+export async function waitForContextCompressionAgent(): Promise<void> {
+  await backgroundCompressionQueue
 }
 
 export async function readCompressedSessionStateForPrompt(): Promise<string | null> {

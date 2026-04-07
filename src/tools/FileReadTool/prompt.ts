@@ -1,5 +1,6 @@
 import { isPDFSupported } from '../../utils/pdfUtils.js'
 import { getCodeIndexToolDeferralHint } from '../../utils/codeIndexGuidance.js'
+import { getMemoryIndexToolDeferralHint } from '../../utils/memoryIndexGuidance.js'
 import { BASH_TOOL_NAME } from '../BashTool/toolName.js'
 import { SKILL_TOOL_NAME } from '../SkillTool/constants.js'
 
@@ -40,6 +41,10 @@ Usage:
 ${offsetInstruction}
 ${lineFormat}
 - ${getCodeIndexToolDeferralHint({
+    skillToolName: SKILL_TOOL_NAME,
+    toolName: FILE_READ_TOOL_NAME,
+  })}
+- ${getMemoryIndexToolDeferralHint({
     skillToolName: SKILL_TOOL_NAME,
     toolName: FILE_READ_TOOL_NAME,
   })}
