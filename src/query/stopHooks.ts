@@ -52,12 +52,10 @@ import type { QuerySource } from '../constants/querySource.js'
 import { executeAutoDream } from '../services/autoDream/autoDream.js'
 import { executePromptSuggestion } from '../services/PromptSuggestion/promptSuggestion.js'
 import { isBareMode, isEnvDefinedFalsy } from '../utils/envUtils.js'
-import { getProjectRoot } from '../bootstrap/state.js'
 import {
   createCacheSafeParams,
   saveCacheSafeParams,
 } from '../utils/forkedAgent.js'
-import { queueAutoMemoryIndexBuild } from '../memoryIndex/autoMemoryIndex.js'
 
 type StopHookResult = {
   blockingErrors: Message[]
@@ -133,8 +131,8 @@ export async function* handleStopHooks(
     ])
   }
   // --bare / SIMPLE: skip background bookkeeping (prompt suggestion,
-  // memory extraction, auto-dream). Scripted -p calls don't want auto-memory
-  // or forked agents contending for resources during shutdown.
+  // memory extraction, auto-dream). Scripted -p calls don't want forked
+  // agents contending for resources during shutdown.
   if (!isBareMode()) {
     // Inline env check for dead code elimination in external builds
     if (!isEnvDefinedFalsy(process.env.CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION)) {
@@ -154,7 +152,6 @@ export async function* handleStopHooks(
       )
     }
     if (!toolUseContext.agentId) {
-      queueAutoMemoryIndexBuild(getProjectRoot())
       void executeAutoDream(stopHookContext, toolUseContext.appendSystemMessage)
     }
   }

@@ -12,6 +12,7 @@ import { markPostCompaction } from 'src/bootstrap/state.js'
 import { getInvokedSkillsForAgent } from '../../bootstrap/state.js'
 import type { QuerySource } from '../../constants/querySource.js'
 import type { CanUseToolFn } from '../../hooks/useCanUseTool.js'
+import { buildAutoMemoryIndexBeforeCompaction } from '../../memoryIndex/autoMemoryIndex.js'
 import type { Tool, ToolUseContext } from '../../Tool.js'
 import type { LocalAgentTaskState } from '../../tasks/LocalAgentTask/LocalAgentTask.js'
 import { FileReadTool } from '../../tools/FileReadTool/FileReadTool.js'
@@ -399,6 +400,7 @@ export async function compactConversation(
       throw new Error(ERROR_MESSAGE_NOT_ENOUGH_MESSAGES)
     }
 
+    await buildAutoMemoryIndexBeforeCompaction(context.agentId)
     startContextCompressionAgent(messages)
 
     const preCompactTokenCount = tokenCountWithEstimation(messages)
@@ -810,6 +812,7 @@ export async function partialCompactConversation(
       )
     }
 
+    await buildAutoMemoryIndexBeforeCompaction(context.agentId)
     startContextCompressionAgent(allMessages)
 
     const preCompactTokenCount = tokenCountWithEstimation(allMessages)

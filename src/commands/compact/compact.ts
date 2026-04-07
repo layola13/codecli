@@ -5,6 +5,7 @@ import { getSystemPrompt } from '../../constants/prompts.js'
 import { getSystemContext, getUserContext } from '../../context.js'
 import { startContextCompressionAgent } from '../../context/compression/runtime.js'
 import { getShortcutDisplay } from '../../keybindings/shortcutFormat.js'
+import { buildAutoMemoryIndexBeforeCompaction } from '../../memoryIndex/autoMemoryIndex.js'
 import { notifyCompaction } from '../../services/api/promptCacheBreakDetection.js'
 import {
   type CompactionResult,
@@ -148,6 +149,7 @@ async function compactViaReactive(
   compactionResult: CompactionResult
   displayText: string
 }> {
+  await buildAutoMemoryIndexBeforeCompaction(context.agentId)
   context.onCompactProgress?.({
     type: 'hooks_start',
     hookType: 'pre_compact',

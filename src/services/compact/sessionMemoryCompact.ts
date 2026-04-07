@@ -2,6 +2,7 @@
  * EXPERIMENT: Session memory compaction
  */
 
+import { buildAutoMemoryIndexBeforeCompaction } from '../../memoryIndex/autoMemoryIndex.js'
 import type { AgentId } from '../../types/ids.js'
 import type { HookResultMessage, Message } from '../../types/message.js'
 import { logForDebugging } from '../../utils/debug.js'
@@ -541,6 +542,8 @@ export async function trySessionMemoryCompaction(
     logEvent('tengu_sm_compact_empty_template', {})
     return null
   }
+
+  await buildAutoMemoryIndexBeforeCompaction(agentId)
 
   try {
     let lastSummarizedIndex: number

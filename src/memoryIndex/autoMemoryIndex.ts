@@ -2,6 +2,8 @@ import { existsSync } from 'fs'
 import { join, dirname, resolve } from 'path'
 import { Worker } from 'node:worker_threads'
 import { fileURLToPath, pathToFileURL } from 'url'
+import { getProjectRoot } from '../bootstrap/state.js'
+import type { AgentId } from '../types/ids.js'
 import { registerCleanup } from '../utils/cleanupRegistry.js'
 import { logForDebugging } from '../utils/debug.js'
 import { errorMessage } from '../utils/errors.js'
@@ -291,6 +293,17 @@ export function queueAutoMemoryIndexBuild(rootDir: string): void {
     outputDir,
   })
   scheduleAutoMemoryIndexRun()
+}
+
+export async function buildAutoMemoryIndexBeforeCompaction(
+  agentId?: AgentId,
+): Promise<void> {
+  if (agentId) {
+    return
+  }
+
+  queueAutoMemoryIndexBuild(getProjectRoot())
+  await flushPendingAutoMemoryIndex()
 }
 
 export async function flushPendingAutoMemoryIndexForTesting(): Promise<void> {
