@@ -5,10 +5,6 @@ const builds = [
     entrypoint: 'src/commands/index/cliBundleEntry.ts',
     outfile: 'src/commands/index/cliBundle.mjs',
   },
-  {
-    entrypoint: 'src/indexing/parseWorker.ts',
-    outfile: 'src/commands/index/parseWorker.bundle.mjs',
-  },
 ]
 
 for (const build of builds) {

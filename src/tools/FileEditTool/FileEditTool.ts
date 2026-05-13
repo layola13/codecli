@@ -5,7 +5,6 @@ import { diagnosticTracker } from "../../services/diagnosticTracking.js";
 import { clearDeliveredDiagnosticsForFile } from "../../services/lsp/LSPDiagnosticRegistry.js";
 import { getLspServerManager } from "../../services/lsp/manager.js";
 import { notifyVscodeFileUpdated } from "../../services/mcp/vscodeSdkMcp.js";
-import { notifyAutoIndexFileMutation } from "../../indexing/autoIndex.js";
 import { checkTeamMemSecrets } from "../../services/teamMemorySync/teamMemSecretGuard.js";
 import {
   activateConditionalSkillsForPaths,
@@ -528,7 +527,6 @@ export const FileEditTool = buildTool({
       offset: undefined,
       limit: undefined,
     });
-    notifyAutoIndexFileMutation(absoluteFilePath);
 
     // 7. Log events
     if (absoluteFilePath.endsWith(`${sep}CLAUDE.md`)) {

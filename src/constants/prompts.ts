@@ -65,10 +65,6 @@ import { isJudgeModeEnabled } from '../utils/judgeMode.js'
 import { isQuietModeEnabled } from '../utils/quietMode.js'
 import { isUndercover } from '../utils/undercover.js'
 import { isMcpInstructionsDeltaEnabled } from '../utils/mcpInstructionsDelta.js'
-import {
-  CODE_INDEX_SKILL_NAME,
-  getCodeIndexBlockingRequirement,
-} from '../utils/codeIndexGuidance.js'
 
 // Dead code elimination: conditional imports for feature-gated modules
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -363,8 +359,6 @@ function getSessionSpecificGuidanceSection(
   const hasAskUserQuestionTool = enabledTools.has(ASK_USER_QUESTION_TOOL_NAME)
   const hasSkills =
     skillToolCommands.length > 0 && enabledTools.has(SKILL_TOOL_NAME)
-  const hasCodeIndexSkill =
-    hasSkills && skillToolCommands.some(cmd => cmd.name === CODE_INDEX_SKILL_NAME)
   const hasAgentTool = enabledTools.has(AGENT_TOOL_NAME)
   const searchTools = hasEmbeddedSearchTools()
     ? `\`find\` or \`grep\` via the ${BASH_TOOL_NAME} tool`
@@ -390,13 +384,6 @@ function getSessionSpecificGuidanceSection(
       : []),
     hasSkills
       ? `/<skill-name> (e.g., /commit) is shorthand for users to invoke a user-invocable skill. When executed, the skill gets expanded to a full prompt. Use the ${SKILL_TOOL_NAME} tool to execute them. IMPORTANT: Only use ${SKILL_TOOL_NAME} for skills listed in its user-invocable skills section - do not guess or use built-in CLI commands.`
-      : null,
-    hasCodeIndexSkill
-      ? getCodeIndexBlockingRequirement({
-          readToolName: FILE_READ_TOOL_NAME,
-          searchTools,
-          skillToolName: SKILL_TOOL_NAME,
-        })
       : null,
     DISCOVER_SKILLS_TOOL_NAME !== null &&
     hasSkills &&

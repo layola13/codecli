@@ -6,7 +6,6 @@ import {
 } from "src/utils/fileHistory.js";
 import { z } from "zod/v4";
 import { buildTool, type ToolDef, type ToolUseContext } from "../../Tool.js";
-import { notifyAutoIndexFileMutation } from "../../indexing/autoIndex.js";
 import type { NotebookCell, NotebookContent } from "../../types/notebook.js";
 import { getCwd } from "../../utils/cwd.js";
 import { isENOENT } from "../../utils/errors.js";
@@ -441,7 +440,6 @@ export const NotebookEditTool = buildTool({
         offset: undefined,
         limit: undefined,
       });
-      notifyAutoIndexFileMutation(fullPath);
       const data = {
         new_source,
         cell_type: cell_type ?? "code",

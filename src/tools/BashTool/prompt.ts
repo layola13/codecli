@@ -11,7 +11,6 @@ import {
   getDefaultBashTimeoutMs,
   getMaxBashTimeoutMs,
 } from '../../utils/timeouts.js'
-import { getCodeIndexToolDeferralHint } from '../../utils/codeIndexGuidance.js'
 import {
   getUndercoverInstructions,
   isUndercover,
@@ -280,10 +279,7 @@ export function getSimplePrompt(): string {
   const embedded = hasEmbeddedSearchTools()
 
   const toolPreferenceItems = [
-    getCodeIndexToolDeferralHint({
-      skillToolName: SKILL_TOOL_NAME,
-      toolName: BASH_TOOL_NAME,
-    }),
+    `Use ${BASH_TOOL_NAME} for shell commands when you need direct control over the filesystem, process execution, or command composition.`,
     ...(embedded
       ? []
       : [

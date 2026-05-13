@@ -1,7 +1,5 @@
 import { isPDFSupported } from '../../utils/pdfUtils.js'
-import { getCodeIndexToolDeferralHint } from '../../utils/codeIndexGuidance.js'
 import { BASH_TOOL_NAME } from '../BashTool/toolName.js'
-import { SKILL_TOOL_NAME } from '../SkillTool/constants.js'
 
 // Use a string constant for tool names to avoid circular dependencies
 export const FILE_READ_TOOL_NAME = 'Read'
@@ -39,11 +37,7 @@ Usage:
 - By default, it reads up to ${MAX_LINES_TO_READ} lines starting from the beginning of the file${maxSizeInstruction}
 ${offsetInstruction}
 ${lineFormat}
-- ${getCodeIndexToolDeferralHint({
-    skillToolName: SKILL_TOOL_NAME,
-    toolName: FILE_READ_TOOL_NAME,
-  })}
-- This tool allows Claude Code to read images (eg PNG, JPG, etc). When reading an image file the contents are presented visually as Claude Code is a multimodal LLM.${
+  - This tool allows Claude Code to read images (eg PNG, JPG, etc). When reading an image file the contents are presented visually as Claude Code is a multimodal LLM.${
     isPDFSupported()
       ? '\n- This tool can read PDF files (.pdf). For large PDFs (more than 10 pages), you MUST provide the pages parameter to read specific page ranges (e.g., pages: "1-5"). Reading a large PDF without the pages parameter will fail. Maximum 20 pages per request.'
       : ''

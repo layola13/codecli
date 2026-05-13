@@ -66,32 +66,28 @@ function syncPublishedVersion(text, version) {
 }
 
 const importBefore = [
-  'import{createRequire as _K5}from"node:module";import indexBuiltinCommand from"./src/commands/index/cliBundle.mjs";',
-  'import{createRequire as _K5}from"node:module";import{indexBuiltinCommand,pinBuiltinCommand,unpinBuiltinCommand}from"./src/commands/index/cliBundle.mjs";',
+  'import{createRequire as _K5}from"node:module";import{indexBuiltinCommand,pinBuiltinCommand,unpinBuiltinCommand,compressBuiltinCommand,compressStatusBuiltinCommand}from"./src/commands/index/cliBundle.mjs";',
 ]
 const importAfter =
-  'import{createRequire as _K5}from"node:module";import{indexBuiltinCommand,pinBuiltinCommand,unpinBuiltinCommand,compressBuiltinCommand,compressStatusBuiltinCommand}from"./src/commands/index/cliBundle.mjs";'
+  'import{createRequire as _K5}from"node:module";import{pinBuiltinCommand,unpinBuiltinCommand,compressBuiltinCommand,compressStatusBuiltinCommand}from"./src/commands/index/cliBundle.mjs";'
 
 const commandsBefore = [
-  'indexBuiltinCommand,ZVK',
-  'indexBuiltinCommand,pinBuiltinCommand,unpinBuiltinCommand,ZVK',
+  'indexBuiltinCommand,pinBuiltinCommand,unpinBuiltinCommand,compressBuiltinCommand,compressStatusBuiltinCommand,ZVK',
 ]
 const commandsAfter =
-  'indexBuiltinCommand,pinBuiltinCommand,unpinBuiltinCommand,compressBuiltinCommand,compressStatusBuiltinCommand,ZVK'
+  'pinBuiltinCommand,unpinBuiltinCommand,compressBuiltinCommand,compressStatusBuiltinCommand,ZVK'
 
 const nonInteractiveBefore = [
-  'indexBuiltinCommand].filter((q)=>q!==null))',
-  'indexBuiltinCommand,pinBuiltinCommand,unpinBuiltinCommand].filter((q)=>q!==null))',
+  'indexBuiltinCommand,pinBuiltinCommand,unpinBuiltinCommand,compressBuiltinCommand,compressStatusBuiltinCommand].filter((q)=>q!==null))',
 ]
 const nonInteractiveAfter =
-  'indexBuiltinCommand,pinBuiltinCommand,unpinBuiltinCommand,compressBuiltinCommand,compressStatusBuiltinCommand].filter((q)=>q!==null))'
+  'pinBuiltinCommand,unpinBuiltinCommand,compressBuiltinCommand,compressStatusBuiltinCommand].filter((q)=>q!==null))'
 
 const localCommandSetBefore = [
-  'new Set([Uq7,Zg8,Bg8,c37,sK7,V37,indexBuiltinCommand].filter((q)=>q!==null))',
-  'new Set([Uq7,Zg8,Bg8,c37,sK7,V37,indexBuiltinCommand,pinBuiltinCommand,unpinBuiltinCommand].filter((q)=>q!==null))',
+  'new Set([Uq7,Zg8,Bg8,c37,sK7,V37,indexBuiltinCommand,pinBuiltinCommand,unpinBuiltinCommand,compressBuiltinCommand,compressStatusBuiltinCommand].filter((q)=>q!==null))',
 ]
 const localCommandSetAfter =
-  'new Set([Uq7,Zg8,Bg8,c37,sK7,V37,indexBuiltinCommand,pinBuiltinCommand,unpinBuiltinCommand,compressBuiltinCommand,compressStatusBuiltinCommand].filter((q)=>q!==null))'
+  'new Set([Uq7,Zg8,Bg8,c37,sK7,V37,pinBuiltinCommand,unpinBuiltinCommand,compressBuiltinCommand,compressStatusBuiltinCommand].filter((q)=>q!==null))'
 
 const packageJson = JSON.parse(await readFile(PACKAGE_JSON_PATH, 'utf8'))
 let cliText = await readFile(CLI_PATH, 'utf8')

@@ -6,7 +6,6 @@ import { diagnosticTracker } from "../../services/diagnosticTracking.js";
 import { clearDeliveredDiagnosticsForFile } from "../../services/lsp/LSPDiagnosticRegistry.js";
 import { getLspServerManager } from "../../services/lsp/manager.js";
 import { notifyVscodeFileUpdated } from "../../services/mcp/vscodeSdkMcp.js";
-import { notifyAutoIndexFileMutation } from "../../indexing/autoIndex.js";
 import { checkTeamMemSecrets } from "../../services/teamMemorySync/teamMemSecretGuard.js";
 import {
   activateConditionalSkillsForPaths,
@@ -336,7 +335,6 @@ export const FileWriteTool = buildTool({
       offset: undefined,
       limit: undefined,
     });
-    notifyAutoIndexFileMutation(fullFilePath);
 
     // Log when writing to CLAUDE.md
     if (fullFilePath.endsWith(`${sep}CLAUDE.md`)) {

@@ -40,3 +40,12 @@ vendor/*-src/*.js
 /demo/
 .code_index_*
 .index_*
+.mimir/
+.github/
+.windsurf/
+
+# code-index generated artifacts
+.claude/skills/code-index
+.codex/skills/code-index
+.opencode/skills/code-index
+# end code-index generated artifacts
