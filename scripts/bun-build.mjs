@@ -43,7 +43,7 @@ const hasSourceEntrypoint = existsSync(sourceEntrypoint);
 const hasAppServerEntrypoint = existsSync(appServerEntrypoint);
 
 if (forcePublished && !hasPublishedBundle) {
-  console.error(`Source entrypoint not found: ${sourceEntrypoint}`);
+  console.error(`Published entrypoint not found: ${publishedEntrypoint}`);
   process.exit(1);
 }
 
@@ -52,8 +52,8 @@ if (forceSource && !hasSourceEntrypoint) {
   process.exit(1);
 }
 
-if (appServer && !hasSourceEntrypoint) {
-  console.error(`Source entrypoint not found: ${sourceEntrypoint}`);
+if (appServer && !hasPublishedBundle) {
+  console.error(`Published entrypoint not found: ${publishedEntrypoint}`);
   process.exit(1);
 }
 
