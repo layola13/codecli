@@ -84,13 +84,12 @@ import { isAnalyticsDisabled } from 'src/services/analytics/config.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import { initializeAnalyticsGates } from 'src/services/analytics/sink.js';
-import { getAutoAllowOptIn, getAutoContinueOptIn, getConciseModeOptIn, getOriginalCwd, getUserMsgOptIn, setAdditionalDirectoriesForClaudeMd, setAutoAllowOptIn, setAutoContinueOptIn, setConciseModeOptIn, setIsRemoteMode, setJudgeModeOptIn, setMainLoopModelOverride, setMainThreadAgentType, setQuietModeOptIn, setTeleportedSessionInfo, setUserMsgOptIn } from './bootstrap/state.js';
+import { getAutoAllowOptIn, getAutoContinueOptIn, getConciseModeOptIn, getOriginalCwd, getUserMsgOptIn, setAdditionalDirectoriesForClaudeMd, setAutoAllowOptIn, setAutoContinueOptIn, setConciseModeOptIn, setIsRemoteMode, setMainLoopModelOverride, setMainThreadAgentType, setQuietModeOptIn, setTeleportedSessionInfo, setUserMsgOptIn } from './bootstrap/state.js';
 import { filterCommandsForRemoteMode, getCommands } from './commands.js';
 import type { StatsStore } from './context/stats.js';
 import { launchAssistantInstallWizard, launchAssistantSessionChooser, launchInvalidSettingsDialog, launchResumeChooser, launchSnapshotUpdateDialog, launchTeleportRepoMismatchDialog, launchTeleportResumeWrapper } from './dialogLaunchers.js';
 import { enableAutoContinuePermissionContext } from './utils/autoContinue.js';
 import { isBriefEnabled, isBriefEntitled } from './utils/briefMode.js';
-import { isJudgeModeEnabled } from './utils/judgeMode.js';
 import { isQuietModeEnabled } from './utils/quietMode.js';
 import { SHOW_CURSOR } from './ink/termio/dec.js';
 import { exitWithError, exitWithMessage, getRenderContext, renderAndRun, showSetupScreens } from './interactiveHelpers.js';
@@ -2255,7 +2254,6 @@ async function run(): Promise<CommanderCommand> {
     maybeActivateBrief(options);
     maybeActivateConcise(options);
     maybeActivateQuiet(options);
-    maybeActivateJudge(options);
     writeStartupTrace('after maybeActivateModes');
     // defaultView: 'chat' is a persisted opt-in — check entitlement and set
     // userMsgOptIn so the tool + prompt section activate. Interactive-only:
@@ -3058,7 +3056,6 @@ async function run(): Promise<CommanderCommand> {
       },
       statusLineText: undefined,
       kairosEnabled,
-      judgeModeOptIn: isJudgeModeEnabled(),
       remoteSessionUrl: undefined,
       remoteConnectionStatus: 'connecting',
       remoteBackgroundTaskCount: 0,
@@ -3229,7 +3226,6 @@ async function run(): Promise<CommanderCommand> {
         maybeActivateBrief(options);
         maybeActivateConcise(options);
         maybeActivateQuiet(options);
-        maybeActivateJudge(options);
         if (feature('TRANSCRIPT_CLASSIFIER') && autoContinueFlag) {
           loaded.initialState = {
             ...loaded.initialState,
@@ -3846,7 +3842,6 @@ async function run(): Promise<CommanderCommand> {
         maybeActivateBrief(options);
         maybeActivateConcise(options);
         maybeActivateQuiet(options);
-        maybeActivateJudge(options);
         if (feature('TRANSCRIPT_CLASSIFIER') && autoContinueFlag) {
           resumeData.initialState = {
             ...resumeData.initialState,
@@ -3895,7 +3890,6 @@ async function run(): Promise<CommanderCommand> {
       maybeActivateBrief(options);
       maybeActivateConcise(options);
       maybeActivateQuiet(options);
-      maybeActivateJudge(options);
       // Persist the current mode for fresh sessions so future resumes know what mode was used
       if (feature('COORDINATOR_MODE')) {
         saveMode(coordinatorModeModule?.isCoordinatorMode() ? 'coordinator' : 'normal');
@@ -3970,7 +3964,6 @@ async function run(): Promise<CommanderCommand> {
   program.addOption(new Option('--autocontinue', 'Continue through obvious next phases without pausing to ask, and authorize auto mode for this session when available'));
   program.addOption(new Option('--concise', 'Enable concise output mode'));
   program.addOption(new Option('--quiet', 'Suppress intermediate progress updates until blocked or done'));
-  program.addOption(new Option('--judge', 'Require an independent verification pass before reporting completion'));
   if (feature('KAIROS')) {
     program.addOption(new Option('--assistant', 'Force assistant mode (Agent SDK daemon use)').hideHelp());
   }
@@ -4834,20 +4827,6 @@ function maybeActivateQuiet(options: unknown): void {
   logEvent('tengu_quiet_mode_enabled', {
     enabled: true,
     source: (quietEnv ? 'env' : 'flag') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-  });
-}
-function maybeActivateJudge(options: unknown): void {
-  const judgeFlag = (options as {
-    judge?: boolean;
-  }).judge;
-  const judgeEnv = isEnvTruthy(process.env.CLAUDE_CODE_JUDGE);
-  if (!judgeFlag && !judgeEnv) return;
-  if (!isJudgeModeEnabled()) {
-    setJudgeModeOptIn(true);
-  }
-  logEvent('tengu_judge_mode_enabled', {
-    enabled: true,
-    source: (judgeEnv ? 'env' : 'flag') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
   });
 }
 function resetCursor() {

@@ -1,7 +1,4 @@
-import {
-  setJudgeModeOptIn,
-  setMainLoopModelOverride,
-} from '../bootstrap/state.js'
+import { setMainLoopModelOverride } from "../bootstrap/state.js"
 import {
   clearApiKeyHelperCache,
   clearAwsCredentialsCache,
@@ -50,9 +47,6 @@ export function onChangeAppState({
   newState: AppState
   oldState: AppState
 }) {
-  if (newState.judgeModeOptIn !== oldState.judgeModeOptIn) {
-    setJudgeModeOptIn(newState.judgeModeOptIn)
-  }
 
   // toolPermissionContext.mode — single choke point for CCR/SDK mode sync.
   //

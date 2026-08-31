@@ -79,7 +79,6 @@ type State = {
   userMsgOptIn: boolean
   conciseModeOptIn: boolean
   quietModeOptIn: boolean
-  judgeModeOptIn: boolean
   autoAllowOptIn: boolean
   autoContinueOptIn: boolean
   clientType: string
@@ -311,7 +310,6 @@ function getInitialState(): State {
     userMsgOptIn: false,
     conciseModeOptIn: false,
     quietModeOptIn: false,
-    judgeModeOptIn: false,
     autoAllowOptIn: false,
     autoContinueOptIn: false,
     clientType: 'cli',
@@ -1137,13 +1135,6 @@ export function setQuietModeOptIn(value: boolean): void {
   STATE.quietModeOptIn = value
 }
 
-export function getJudgeModeOptIn(): boolean {
-  return STATE.judgeModeOptIn
-}
-
-export function setJudgeModeOptIn(value: boolean): void {
-  STATE.judgeModeOptIn = value
-}
 
 export function getAutoAllowOptIn(): boolean {
   return STATE.autoAllowOptIn

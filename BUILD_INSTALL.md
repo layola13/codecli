@@ -147,7 +147,6 @@ bun run compile:bun
 - 入口：`src/entrypoints/cli.tsx`
 - 输出：`dist/claudecode`
 - 类型：Bun standalone executable
-- `/index`、`/pin`、`/unpin`、`/compress`、`/compress-status` 都直接来自源码命令注册链
 
 如果要构建预览版，可直接执行：
 
@@ -191,30 +190,6 @@ env ANTHROPIC_BASE_URL=http://your-proxy.example bun run smoke:preview
 
 `smoke:preview` 在检测到 `ANTHROPIC_BASE_URL` 后，会额外执行一次 `--print "hello"` 联机检查；未设置时只做离线命令可用性检查。
 
-兼容兜底的发布包路径保留为：
-
-```bash
-bun run compile:bun:published
-```
-
-它的等价逻辑仍然是：
-
-- 先生成：`src/commands/index/cliBundle.mjs`
-- 再执行：`scripts/patch-cli-sidecar.mjs`
-- 入口：`cli.js`
-- 额外挂载：`src/commands/index/cliBundle.mjs`
-- 输出：`dist/claudecode`
-- 类型：Bun standalone executable
-
-这里最容易误解的一点现在变成：
-
-- 默认 `compile:bun` 已经不再走 `cli.js`
-- `src/commands/index/cliBundle.mjs` 只在 `compile:bun:published` 这条兼容路径里作为 sidecar 使用
-- 只有继续走发布包编译时，新增命令才需要通过 `scripts/patch-cli-sidecar.mjs` 注入到 `cli.js`
-
-详细说明见：
-
-- `docs/cli.js-patch机制说明.md`
 
 编译成功后可看到：
 

@@ -29,7 +29,6 @@ bun-debug.log*
 .vscode/
 /dist/
 dist/
-.code_index/
 .codex/
 .claude/
 tmp/
@@ -38,5 +37,4 @@ tmp/
 # Transpiled vendor helper outputs
 vendor/*-src/*.js
 /demo/
-.code_index_*
 .index_*

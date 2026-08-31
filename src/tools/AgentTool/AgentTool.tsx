@@ -362,18 +362,6 @@ export const AgentTool = buildTool({
       throw new Error(`In-process teammates cannot spawn background agents. Agent '${selectedAgent.agentType}' has background: true in its definition.`);
     }
 
-    // Judge mode already has an automatic verification gate. If the main thread
-    // manually spawns the verification agent as well, we burn a second full
-    // verifier run and can end up with duplicated judge output.
-    if (
-      appState.judgeModeOptIn &&
-      selectedAgent.agentType === VERIFICATION_AGENT_TYPE &&
-      (toolUseContext.options.querySource?.startsWith('repl_main_thread') ?? true)
-    ) {
-      throw new Error(
-        'Judge mode already launches the verification agent automatically. Do not spawn it manually from the main thread.',
-      );
-    }
 
     // Capture for type narrowing — `let selectedAgent` prevents TS from
     // narrowing property types across the if-else assignment above.

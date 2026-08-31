@@ -61,14 +61,9 @@ import { logForDebugging } from '../utils/debug.js'
 import { loadMemoryPrompt } from '../memdir/memdir.js'
 import { isAutoContinueEnabled } from '../utils/autoContinue.js'
 import { isConciseEnabled } from '../utils/conciseMode.js'
-import { isJudgeModeEnabled } from '../utils/judgeMode.js'
 import { isQuietModeEnabled } from '../utils/quietMode.js'
 import { isUndercover } from '../utils/undercover.js'
 import { isMcpInstructionsDeltaEnabled } from '../utils/mcpInstructionsDelta.js'
-import {
-  CODE_INDEX_SKILL_NAME,
-  getCodeIndexBlockingRequirement,
-} from '../utils/codeIndexGuidance.js'
 
 // Dead code elimination: conditional imports for feature-gated modules
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -363,8 +358,6 @@ function getSessionSpecificGuidanceSection(
   const hasAskUserQuestionTool = enabledTools.has(ASK_USER_QUESTION_TOOL_NAME)
   const hasSkills =
     skillToolCommands.length > 0 && enabledTools.has(SKILL_TOOL_NAME)
-  const hasCodeIndexSkill =
-    hasSkills && skillToolCommands.some(cmd => cmd.name === CODE_INDEX_SKILL_NAME)
   const hasAgentTool = enabledTools.has(AGENT_TOOL_NAME)
   const searchTools = hasEmbeddedSearchTools()
     ? `\`find\` or \`grep\` via the ${BASH_TOOL_NAME} tool`
@@ -391,13 +384,6 @@ function getSessionSpecificGuidanceSection(
     hasSkills
       ? `/<skill-name> (e.g., /commit) is shorthand for users to invoke a user-invocable skill. When executed, the skill gets expanded to a full prompt. Use the ${SKILL_TOOL_NAME} tool to execute them. IMPORTANT: Only use ${SKILL_TOOL_NAME} for skills listed in its user-invocable skills section - do not guess or use built-in CLI commands.`
       : null,
-    hasCodeIndexSkill
-      ? getCodeIndexBlockingRequirement({
-          readToolName: FILE_READ_TOOL_NAME,
-          searchTools,
-          skillToolName: SKILL_TOOL_NAME,
-        })
-      : null,
     DISCOVER_SKILLS_TOOL_NAME !== null &&
     hasSkills &&
     enabledTools.has(DISCOVER_SKILLS_TOOL_NAME)
@@ -405,7 +391,6 @@ function getSessionSpecificGuidanceSection(
       : null,
     hasAgentTool &&
     feature('VERIFICATION_AGENT') &&
-    !isJudgeModeEnabled() &&
     // 3P default: false — verification agent is ant-only A/B
     getFeatureValue_CACHED_MAY_BE_STALE('tengu_hive_evidence', false)
       ? `The contract: when non-trivial implementation happens on your turn, independent adversarial verification must happen before you report completion \u2014 regardless of who did the implementing (you directly, a fork you spawned, or a subagent). You are the one reporting to the user; you own the gate. Non-trivial means: 3+ file edits, backend/API changes, or infrastructure changes. Spawn the ${AGENT_TOOL_NAME} tool with subagent_type="${VERIFICATION_AGENT_TYPE}". Your own checks, caveats, and a fork's self-checks do NOT substitute \u2014 only the verifier assigns a verdict; you cannot self-assign PARTIAL. Pass the original user request, all files changed (by anyone), the approach, and the plan file path if applicable. Flag concerns if you have them but do NOT share test results or claim things work. On FAIL: fix, resume the verifier with its findings plus your fix, repeat until PASS. On PASS: spot-check it \u2014 re-run 2-3 commands from its report, confirm every PASS has a Command run block with output that matches your re-run. If any PASS lacks a command block or diverges, resume the verifier with the specifics. On PARTIAL (from the verifier): report what passed and what could not be verified.`
@@ -574,9 +559,6 @@ ${CYBER_RISK_INSTRUCTION}`,
       : []),
     ...(isAutoContinueEnabled()
       ? [systemPromptSection('auto_continue', () => getAutoContinueSection())]
-      : []),
-    ...(isJudgeModeEnabled()
-      ? [systemPromptSection('judge_mode', () => getJudgeModeSection())]
       : []),
   ]
 
@@ -912,21 +894,6 @@ Keep going when the next step is obvious.
 - When you find a likely next action, execute it instead of proposing it.
 - Only pause when you need genuinely new user input, when an action is risky or hard to undo, when costs or external side effects are meaningful, or when multiple materially different directions need an explicit user choice.
 - If quiet mode is also enabled, continue silently through obvious next steps and report only at the real stopping point.`
-}
-
-function getJudgeModeSection(): string | null {
-  if (!isJudgeModeEnabled()) return null
-
-  return `# Judge mode
-
-Before you report a task complete, you must get an independent verification verdict.
-
-- Judge mode launches the verifier automatically. Do not manually spawn the verification agent unless the user explicitly asks for a separate public verifier run.
-- Pass the original user task, the files changed, and the approach taken.
-- If the verifier returns FAIL, or reveals missing work, you must continue fixing the task and verify again.
-- Do not present the task as complete until the verifier returns VERDICT: PASS, unless you are genuinely blocked by missing tools, missing environment, or missing user input.
-- If the verifier returns PARTIAL because of environmental limits, explain exactly what was verified, what could not be verified, and why.
-- If quiet mode is also enabled, stay silent during the implement → verify → fix loop and only report once you have a final verified result or a real blocker.`
 }
 
 function getProactiveSection(): string | null {

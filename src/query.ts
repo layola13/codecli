@@ -110,12 +110,6 @@ import {
 } from './bootstrap/state.js'
 import { createBudgetTracker, checkTokenBudget } from './query/tokenBudget.js'
 import { count } from './utils/array.js'
-import {
-  runAutoJudge,
-  createVerdictFeedbackMessage,
-} from './judge/autoJudge.js'
-import { appendJudgeTrace } from './judge/judgeTraceLogger.js'
-
 /* eslint-disable @typescript-eslint/no-require-imports */
 const snipModule = feature('HISTORY_SNIP')
   ? (require('./services/compact/snipCompact.js') as typeof import('./services/compact/snipCompact.js'))
@@ -183,17 +177,6 @@ function isWithheldMaxOutputTokens(
   return msg?.type === 'assistant' && msg.apiError === 'max_output_tokens'
 }
 
-function shouldRunAutoJudge(
-  querySource: QuerySource,
-  toolUseContext: ToolUseContext,
-): boolean {
-  // Auto-judge is a main-thread verification gate. Keep it off subagents,
-  // especially the verification agent itself, to avoid recursive judging.
-  return (
-    toolUseContext.getAppState().judgeModeOptIn &&
-    querySource.startsWith('repl_main_thread')
-  )
-}
 
 export type QueryParams = {
   messages: Message[]
@@ -217,10 +200,6 @@ export type QueryParams = {
 
 // -- query loop state
 
-// Max judge retry cycles — the main task must wait for judge PASS before
-// returning 'completed'. After this many retries without PASS, exit with
-// a judge-specific reason instead of marking the task as done.
-const MAX_JUDGE_RETRIES = 3
 
 // Mutable state carried between loop iterations
 type State = {
@@ -233,9 +212,6 @@ type State = {
   pendingToolUseSummary: Promise<ToolUseSummaryMessage | null> | undefined
   stopHookActive: boolean | undefined
   turnCount: number
-  // Number of times the judge has returned a non-PASS verdict and asked
-  // the model to retry. Prevents infinite retry loops.
-  judgeRetryCount: number
   // Why the previous iteration continued. Undefined on first iteration.
   // Lets tests assert recovery paths fired without inspecting message contents.
   transition: Continue | undefined
@@ -300,7 +276,6 @@ async function* queryLoop(
     hasAttemptedReactiveCompact: false,
     turnCount: 1,
     pendingToolUseSummary: undefined,
-    judgeRetryCount: 0,
     transition: undefined,
   }
   const budgetTracker = feature('TOKEN_BUDGET') ? createBudgetTracker() : null
@@ -344,26 +319,8 @@ async function* queryLoop(
       pendingToolUseSummary,
       stopHookActive,
       turnCount,
-      judgeRetryCount,
     } = state
-    const traceJudge = (
-      entry: Parameters<typeof appendJudgeTrace>[0],
-    ) =>
-      appendJudgeTrace({
-        turnNumber: turnCount,
-        querySource,
-        agentId: toolUseContext.agentId,
-        ...entry,
-      })
 
-    // Skill discovery prefetch — per-iteration (uses findWritePivot guard
-    // that returns early on non-write iterations). Discovery runs while the
-    // model streams and tools execute; awaited post-tools alongside the
-    // memory prefetch consume. Replaces the blocking assistant_turn path
-    // that ran inside getAttachmentMessages (97% of those calls found
-    // nothing in prod). Turn-0 user-input discovery still blocks in
-    // userInputAttachments — that's the one signal where there's no prior
-    // work to hide under.
     const pendingSkillPrefetch = skillPrefetch?.startSkillDiscoveryPrefetch(
       null,
       messages,
@@ -585,7 +542,6 @@ async function* queryLoop(
     }
 
     const assistantMessages: AssistantMessage[] = []
-    const withheldAssistantMessagesForJudge: AssistantMessage[] = []
     const toolResults: (UserMessage | AttachmentMessage)[] = []
     // @see https://docs.claude.com/en/docs/build-with-claude/tool-use
     // Note: stop_reason === 'tool_use' is unreliable -- it's not always set correctly.
@@ -676,11 +632,7 @@ async function* queryLoop(
         toolUseContext.options.mainLoopModel,
       )
       if (isAtBlockingLimit) {
-        await traceJudge({
-          stage: 'terminal_return',
-          appJudgeModeOptIn: appState.judgeModeOptIn,
-          reason: 'blocking_limit',
-        })
+
         yield createAssistantAPIErrorMessage({
           content: PROMPT_TOO_LONG_ERROR_MESSAGE,
           error: 'invalid_request',
@@ -861,16 +813,6 @@ async function* queryLoop(
             }
             if (isWithheldMaxOutputTokens(message)) {
               withheld = true
-            }
-            const isJudgeWithheldAssistant =
-              message.type === 'assistant' &&
-              !message.isApiErrorMessage &&
-              appState.judgeModeOptIn &&
-              querySource.startsWith('repl_main_thread') &&
-              !message.message.content.some(content => content.type === 'tool_use')
-            if (isJudgeWithheldAssistant) {
-              withheld = true
-              withheldAssistantMessagesForJudge.push(message)
             }
             if (!withheld) {
               yield yieldMessage
@@ -1158,7 +1100,6 @@ async function* queryLoop(
               pendingToolUseSummary: undefined,
               stopHookActive: undefined,
               turnCount,
-              judgeRetryCount,
               transition: {
                 reason: 'collapse_drain_retry',
                 committed: drained.committed,
@@ -1212,7 +1153,6 @@ async function* queryLoop(
             pendingToolUseSummary: undefined,
             stopHookActive: undefined,
             turnCount,
-            judgeRetryCount,
             transition: { reason: 'reactive_compact_retry' },
           }
           state = next
@@ -1268,7 +1208,6 @@ async function* queryLoop(
             pendingToolUseSummary: undefined,
             stopHookActive: undefined,
             turnCount,
-            judgeRetryCount,
             transition: { reason: 'max_output_tokens_escalate' },
           }
           state = next
@@ -1297,7 +1236,6 @@ async function* queryLoop(
             pendingToolUseSummary: undefined,
             stopHookActive: undefined,
             turnCount,
-            judgeRetryCount,
             transition: {
               reason: 'max_output_tokens_recovery',
               attempt: maxOutputTokensRecoveryCount + 1,
@@ -1317,12 +1255,7 @@ async function* queryLoop(
       // error → hook blocking → retry → error → …
       if (lastMessage?.isApiErrorMessage) {
         void executeStopFailureHooks(lastMessage, toolUseContext)
-        await traceJudge({
-          stage: 'terminal_return',
-          appJudgeModeOptIn: appState.judgeModeOptIn,
-          assistantMessageCount: assistantMessages.length,
-          reason: 'completed_after_api_error',
-        })
+
         return { reason: 'completed' }
       }
 
@@ -1337,33 +1270,15 @@ async function* queryLoop(
         stopHookActive,
       )
 
-      await traceJudge({
-        stage: 'stop_hooks_completed',
-        appJudgeModeOptIn: appState.judgeModeOptIn,
-        assistantMessageCount: assistantMessages.length,
-        blockingErrorCount: stopHookResult.blockingErrors.length,
-        preventContinuation: stopHookResult.preventContinuation,
-        details: {
-          judgeWithheldAssistantCount: withheldAssistantMessagesForJudge.length,
-        },
-      })
+
 
       if (stopHookResult.preventContinuation) {
-        await traceJudge({
-          stage: 'terminal_return',
-          appJudgeModeOptIn: appState.judgeModeOptIn,
-          reason: 'stop_hook_prevented',
-        })
+
         return { reason: 'stop_hook_prevented' }
       }
 
       if (stopHookResult.blockingErrors.length > 0) {
-        await traceJudge({
-          stage: 'retry_scheduled',
-          appJudgeModeOptIn: appState.judgeModeOptIn,
-          reason: 'stop_hook_blocking',
-          blockingErrorCount: stopHookResult.blockingErrors.length,
-        })
+
         const next: State = {
           messages: [
             ...messagesForQuery,
@@ -1383,7 +1298,6 @@ async function* queryLoop(
           pendingToolUseSummary: undefined,
           stopHookActive: true,
           turnCount,
-          judgeRetryCount,
           transition: { reason: 'stop_hook_blocking' },
         }
         state = next
@@ -1403,15 +1317,7 @@ async function* queryLoop(
           logForDebugging(
             `Token budget continuation #${decision.continuationCount}: ${decision.pct}% (${decision.turnTokens.toLocaleString()} / ${decision.budget.toLocaleString()})`,
           )
-          await traceJudge({
-            stage: 'retry_scheduled',
-            appJudgeModeOptIn: appState.judgeModeOptIn,
-            reason: 'token_budget_continuation',
-            details: {
-              continuationCount: decision.continuationCount,
-              pct: decision.pct,
-            },
-          })
+
           state = {
             messages: [
               ...messagesForQuery,
@@ -1429,7 +1335,6 @@ async function* queryLoop(
             pendingToolUseSummary: undefined,
             stopHookActive: undefined,
             turnCount,
-            judgeRetryCount,
             transition: { reason: 'token_budget_continuation' },
           }
           continue
@@ -1449,134 +1354,6 @@ async function* queryLoop(
         }
       }
 
-      // Auto-judge: run verification agent after each main-thread turn
-      // completion. Skip subagents to avoid recursive verification loops.
-      // The main task must wait for the judge verdict before deciding
-      // whether to complete or continue fixing.
-      const shouldAutoJudge = shouldRunAutoJudge(querySource, toolUseContext)
-      await traceJudge({
-        stage: 'gate_evaluated',
-        appJudgeModeOptIn: appState.judgeModeOptIn,
-        assistantMessageCount: assistantMessages.length,
-        shouldRun: shouldAutoJudge,
-        reason: !appState.judgeModeOptIn
-          ? 'judge_mode_disabled'
-          : !querySource.startsWith('repl_main_thread')
-            ? 'non_main_thread_query_source'
-            : undefined,
-        details: {
-          judgeWithheldAssistantCount: withheldAssistantMessagesForJudge.length,
-        },
-      })
-
-      if (shouldAutoJudge) {
-        // If we've already retried the max number of times, the main task
-        // exits with a judge-specific reason instead of 'completed'. The
-        // task is only considered done when the judge actually passes.
-        if (judgeRetryCount >= MAX_JUDGE_RETRIES) {
-          await traceJudge({
-            stage: 'terminal_return',
-            appJudgeModeOptIn: appState.judgeModeOptIn,
-            reason: 'auto_judge_failed_max_retries',
-            details: {
-              retryCount: judgeRetryCount,
-              maxJudgeRetries: MAX_JUDGE_RETRIES,
-            },
-          })
-          logForDebugging(
-            `Auto-judge: max retries (${MAX_JUDGE_RETRIES}) reached, exiting without completion`,
-          )
-          logEvent('tengu_auto_judge_max_retries', {
-            retryCount: judgeRetryCount,
-            queryChainId: queryChainIdForAnalytics,
-            queryDepth: queryTracking.depth,
-          })
-          return { reason: 'auto_judge_failed' }
-        }
-
-        logForDebugging(`Auto-judge starting for querySource=${querySource}`)
-        await traceJudge({
-          stage: 'judge_invoked',
-          appJudgeModeOptIn: appState.judgeModeOptIn,
-          details: {
-            retryCount: judgeRetryCount,
-          },
-        })
-        const autoJudgeResult = yield* runAutoJudge({
-          fullMessages: messagesForQuery,
-          assistantMessages,
-          toolUseContext,
-          canUseTool,
-          querySource,
-          turnNumber: turnCount,
-        })
-
-        if (autoJudgeResult.verdict !== 'PASS') {
-          await traceJudge({
-            stage: 'retry_scheduled',
-            appJudgeModeOptIn: appState.judgeModeOptIn,
-            reason: 'auto_judge_verdict',
-            verdict: autoJudgeResult.verdict,
-            logFilePath: autoJudgeResult.logFilePath,
-            details: {
-              retryCount: judgeRetryCount + 1,
-              maxJudgeRetries: MAX_JUDGE_RETRIES,
-            },
-          })
-          const verdictMsg = createVerdictFeedbackMessage(
-            autoJudgeResult.conciseIssues,
-          )
-          logForDebugging(
-            `Auto-judge verdict: ${autoJudgeResult.verdict}, log: ${autoJudgeResult.logFilePath}, retry: ${judgeRetryCount + 1}/${MAX_JUDGE_RETRIES}`,
-          )
-          logEvent('tengu_auto_judge_verdict', {
-            verdict: autoJudgeResult.verdict,
-            logFile: autoJudgeResult.logFilePath,
-            queryChainId: queryChainIdForAnalytics,
-            queryDepth: queryTracking.depth,
-          })
-          state = {
-            messages: [
-              ...messagesForQuery,
-              ...assistantMessages,
-              verdictMsg,
-            ],
-            toolUseContext,
-            autoCompactTracking: tracking,
-            maxOutputTokensRecoveryCount: 0,
-            hasAttemptedReactiveCompact: false,
-            maxOutputTokensOverride: undefined,
-            pendingToolUseSummary: undefined,
-            stopHookActive: undefined,
-            turnCount,
-            judgeRetryCount: judgeRetryCount + 1,
-            transition: { reason: 'auto_judge_retry' },
-          }
-          continue
-        }
-
-        await traceJudge({
-          stage: 'judge_passed',
-          appJudgeModeOptIn: appState.judgeModeOptIn,
-          verdict: autoJudgeResult.verdict,
-          logFilePath: autoJudgeResult.logFilePath,
-        })
-        for (const withheldMessage of withheldAssistantMessagesForJudge) {
-          yield withheldMessage
-        }
-        logEvent('tengu_auto_judge_passed', {
-          logFile: autoJudgeResult.logFilePath,
-          queryChainId: queryChainIdForAnalytics,
-          queryDepth: queryTracking.depth,
-        })
-      }
-
-      await traceJudge({
-        stage: 'terminal_return',
-        appJudgeModeOptIn: appState.judgeModeOptIn,
-        assistantMessageCount: assistantMessages.length,
-        reason: 'completed',
-      })
       return { reason: 'completed' }
     }
 
@@ -1735,21 +1512,13 @@ async function* queryLoop(
           turnCount: nextTurnCountOnAbort,
         })
       }
-      await traceJudge({
-        stage: 'terminal_return',
-        appJudgeModeOptIn: appState.judgeModeOptIn,
-        reason: 'aborted_tools',
-      })
+
       return { reason: 'aborted_tools' }
     }
 
     // If a hook indicated to prevent continuation, stop here
     if (shouldPreventContinuation) {
-      await traceJudge({
-        stage: 'terminal_return',
-        appJudgeModeOptIn: appState.judgeModeOptIn,
-        reason: 'hook_stopped',
-      })
+
       return { reason: 'hook_stopped' }
     }
 
@@ -1941,15 +1710,7 @@ async function* queryLoop(
         maxTurns,
         turnCount: nextTurnCount,
       })
-      await traceJudge({
-        stage: 'terminal_return',
-        appJudgeModeOptIn: appState.judgeModeOptIn,
-        reason: 'max_turns',
-        details: {
-          nextTurnCount,
-          maxTurns,
-        },
-      })
+
       return { reason: 'max_turns', turnCount: nextTurnCount }
     }
 
@@ -1964,7 +1725,6 @@ async function* queryLoop(
       pendingToolUseSummary: nextPendingToolUseSummary,
       maxOutputTokensOverride: undefined,
       stopHookActive,
-      judgeRetryCount,
       transition: { reason: 'next_turn' },
     }
     state = next

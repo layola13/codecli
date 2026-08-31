@@ -1,5 +1,4 @@
 import React from 'react';
-import { getJudgeModeOptIn } from './bootstrap/state.js';
 import type { StatsStore } from './context/stats.js';
 import type { Root } from './ink.js';
 import type { Props as REPLProps } from './screens/REPL.js';
@@ -17,12 +16,7 @@ export async function launchRepl(root: Root, appProps: AppWrapperProps, replProp
   const {
     REPL
   } = await import('./screens/REPL.js');
-  const judgeModeOptIn = getJudgeModeOptIn();
-  const initialState = appProps.initialState.judgeModeOptIn === judgeModeOptIn ? appProps.initialState : {
-    ...appProps.initialState,
-    judgeModeOptIn
-  };
-  await renderAndRun(root, <App {...appProps} initialState={initialState}>
+  await renderAndRun(root, <App {...appProps}>
       <REPL {...replProps} />
     </App>);
 }

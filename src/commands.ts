@@ -32,7 +32,6 @@ import logout from './commands/logout/index.js'
 import installGitHubApp from './commands/install-github-app/index.js'
 import installSlackApp from './commands/install-slack-app/index.js'
 import breakCache from './commands/break-cache/index.js'
-import codeIndex from './commands/index/index.js'
 import mcp from './commands/mcp/index.js'
 import mobile from './commands/mobile/index.js'
 import onboarding from './commands/onboarding/index.js'
@@ -72,7 +71,6 @@ const autoAllowCommand = require('./commands/autoallow.js').default
 const autoContinueCommand = require('./commands/autocontinue.js').default
 const conciseCommand = require('./commands/concise.js').default
 const quietCommand = require('./commands/quiet.js').default
-const judgeCommand = require('./commands/judge.js').default
 const assistantCommand = feature('KAIROS')
   ? require('./commands/assistant/index.js').default
   : null
@@ -289,7 +287,6 @@ const COMMANDS = memoize((): Command[] => [
   heapDump,
   help,
   ide,
-  codeIndex,
   init,
   keybindings,
   installGitHubApp,
@@ -337,7 +334,6 @@ const COMMANDS = memoize((): Command[] => [
   ...(autoContinueCommand ? [autoContinueCommand] : []),
   ...(conciseCommand ? [conciseCommand] : []),
   ...(quietCommand ? [quietCommand] : []),
-  ...(judgeCommand ? [judgeCommand] : []),
   ...(assistantCommand ? [assistantCommand] : []),
   ...(bridge ? [bridge] : []),
   ...(remoteControlServerCommand ? [remoteControlServerCommand] : []),
