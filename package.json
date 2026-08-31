@@ -24,6 +24,7 @@
     "build:bun": "bun scripts/bun-build.mjs --source",
     "build:bun:preview": "bun run typecheck:preview && bun scripts/bun-build.mjs --source --preview",
     "compile:bun": "bun scripts/bun-build.mjs --compile --source",
+    "compile:app-server": "bun run build:command-bundle && bun run patch:cli-sidecar && bun scripts/bun-build.mjs --compile --published --app-server --out dist/claude_app_server.exe",
     "compile:bun:preview": "bun run typecheck:preview && bun scripts/bun-build.mjs --compile --source --preview",
     "build:bun:published": "bun run build:command-bundle && bun run patch:cli-sidecar && bun scripts/bun-build.mjs --published",
     "compile:bun:published": "bun run build:command-bundle && bun run patch:cli-sidecar && bun scripts/bun-build.mjs --compile --published",

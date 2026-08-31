@@ -155,6 +155,18 @@ bun run compile:bun
 bun run compile:bun:preview
 ```
 
+如果只需要构建 Claude app-server，可执行：
+
+```bash
+bun run compile:app-server
+```
+
+该命令只生成 `dist/claude_app_server.exe`。它复用发布版 Claude CLI 的
+SDK `stream-json` 通道，并默认启用 `--print`、`--input-format=stream-json`、
+`--output-format=stream-json` 和 `--verbose`，也可以在命令行中显式覆盖这些选项。
+该文件是 Bun standalone 可执行文件，Windows 下会包含 Bun runtime，体积约为
+`130 MB`，这是单文件 exe 的正常开销。
+
 其中：
 
 - 入口：`src/entrypoints/cli.tsx`

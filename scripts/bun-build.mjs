@@ -15,11 +15,17 @@ function getArgValue(flag) {
 const compile = process.argv.includes("--compile");
 const forceSource = process.argv.includes("--source");
 const forcePublished = process.argv.includes("--published");
+const appServer = process.argv.includes("--app-server");
 const preview = process.argv.includes("--preview");
 const customOutfile = getArgValue("--out") ?? getArgValue("--outfile");
 
 if (forceSource && forcePublished) {
   console.error("Choose either --source or --published, not both.");
+  process.exit(1);
+}
+
+if (appServer && forceSource) {
+  console.error("App-server builds currently support --published only.");
   process.exit(1);
 }
 
@@ -30,9 +36,11 @@ if (preview && forcePublished) {
 
 const publishedEntrypoint = resolve("cli.js");
 const sourceEntrypoint = resolve("src/entrypoints/cli.tsx");
+const appServerEntrypoint = resolve("scripts/app-server-entry.mjs");
 const packageJson = JSON.parse(readFileSync(resolve("package.json"), "utf8"));
 const hasPublishedBundle = existsSync(publishedEntrypoint);
 const hasSourceEntrypoint = existsSync(sourceEntrypoint);
+const hasAppServerEntrypoint = existsSync(appServerEntrypoint);
 
 if (forcePublished && !hasPublishedBundle) {
   console.error(`Published entrypoint not found: ${publishedEntrypoint}`);
@@ -41,6 +49,16 @@ if (forcePublished && !hasPublishedBundle) {
 
 if (forceSource && !hasSourceEntrypoint) {
   console.error(`Source entrypoint not found: ${sourceEntrypoint}`);
+  process.exit(1);
+}
+
+if (appServer && !hasPublishedBundle) {
+  console.error(`Published entrypoint not found: ${publishedEntrypoint}`);
+  process.exit(1);
+}
+
+if (appServer && !hasAppServerEntrypoint) {
+  console.error(`App-server entrypoint not found: ${appServerEntrypoint}`);
   process.exit(1);
 }
 
@@ -54,15 +72,21 @@ if (!hasPublishedBundle && !hasSourceEntrypoint) {
   process.exit(1);
 }
 
-const usePublishedBundle = forcePublished
+const usePublishedBundle = appServer
+  ? true
+  : forcePublished
   ? true
   : preview
     ? false
   : forceSource
     ? false
     : hasPublishedBundle;
-const entrypoint = usePublishedBundle ? publishedEntrypoint : sourceEntrypoint;
-const productName = preview ? "claudenative" : "claudecode";
+const entrypoint = appServer
+  ? appServerEntrypoint
+  : usePublishedBundle
+    ? publishedEntrypoint
+    : sourceEntrypoint;
+const productName = appServer ? "claude_app_server" : preview ? "claudenative" : "claudecode";
 const defaultOutfile = compile
   ? `dist/${productName}`
   : usePublishedBundle || forceSource || preview
@@ -108,6 +132,10 @@ const args = [
   "--outfile",
   outfile
 ];
+
+if (appServer) {
+  args.push("--minify");
+}
 
 if (!usePublishedBundle) {
   args.push(
